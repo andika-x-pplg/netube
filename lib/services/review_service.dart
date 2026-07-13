@@ -28,6 +28,7 @@ class ReviewService {
           "username": username,
           "rating": rating,
           "review": review,
+          "likeCount": 0,
           "createdAt": FieldValue.serverTimestamp(),
         });
   }

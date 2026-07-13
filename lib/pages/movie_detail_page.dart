@@ -7,6 +7,8 @@ import '../services/watch_later_service.dart';
 import '../services/rating_service.dart';
 import '../services/review_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:timeago/timeago.dart' as timeago;
+import '../services/review_like_service.dart';
 
 class MovieDetailPage extends StatefulWidget {
   final Map movie;
@@ -694,6 +696,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                           final review =
                               reviews[index].data() as Map<String, dynamic>;
 
+                          final reviewOwnerUid = reviews[index].id;
+
+                          print("Review Owner UID: $reviewOwnerUid");
+
                           return Container(
                             margin: const EdgeInsets.only(bottom: 15),
 
@@ -744,6 +750,20 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                                             ),
                                           ),
 
+                                          Text(
+                                            review["createdAt"] == null
+                                                ? "Just now"
+                                                : timeago.format(
+                                                    (review["createdAt"]
+                                                            as Timestamp)
+                                                        .toDate(),
+                                                  ),
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+
                                           Row(
                                             children: List.generate(
                                               review["rating"].toInt(),
@@ -770,6 +790,73 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                                     color: Colors.white70,
                                     height: 1.5,
                                   ),
+                                ),
+
+                                const SizedBox(height: 15),
+
+                                Row(
+                                  children: [
+                                    // ========================
+                                    // LIKE BUTTON
+                                    // ========================
+                                    FutureBuilder<bool>(
+                                      future: ReviewLikeService.isLiked(
+                                        movieId: widget.movie["id"],
+                                        reviewOwnerUid: reviewOwnerUid,
+                                      ),
+                                      builder: (context, snapshot) {
+                                        print(snapshot.connectionState);
+                                        print(snapshot.hasData);
+                                        print(snapshot.data);
+
+                                        final liked = snapshot.data ?? false;
+
+                                        return TextButton.icon(
+                                          onPressed: () async {
+                                            if (liked) {
+                                              await ReviewLikeService.unlikeReview(
+                                                movieId: widget.movie["id"],
+                                                reviewOwnerUid: reviewOwnerUid,
+                                              );
+                                            } else {
+                                              await ReviewLikeService.likeReview(
+                                                movieId: widget.movie["id"],
+                                                reviewOwnerUid: reviewOwnerUid,
+                                              );
+                                            }
+
+                                            setState(() {});
+                                          },
+
+                                          icon: Icon(
+                                            liked
+                                                ? Icons.favorite
+                                                : Icons.favorite_border,
+                                            color: Colors.red,
+                                          ),
+
+                                          label: Text(
+                                            liked ? "Liked" : "Like",
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+
+                                    const SizedBox(width: 10),
+
+                                    // ========================
+                                    // TOTAL LIKE
+                                    // ========================
+                                    Text(
+                                      "❤️ ${review["likeCount"] ?? 0}",
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

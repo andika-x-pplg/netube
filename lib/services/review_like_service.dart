@@ -1,0 +1,110 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+class ReviewLikeService {
+  static final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  static final FirebaseAuth auth = FirebaseAuth.instance;
+
+  // ==========================
+  // LIKE REVIEW
+  // ==========================
+  static Future<void> likeReview({
+    required int movieId,
+    required String reviewOwnerUid,
+  }) async {
+    final uid = auth.currentUser!.uid;
+
+    final likeRef = firestore
+        .collection("movieReviews")
+        .doc(movieId.toString())
+        .collection("users")
+        .doc(reviewOwnerUid)
+        .collection("likes")
+        .doc(uid);
+
+    final doc = await likeRef.get();
+
+    if (doc.exists) return;
+
+    await likeRef.set({"uid": uid, "likedAt": FieldValue.serverTimestamp()});
+
+    print("LIKE DOCUMENT CREATED");
+
+    await firestore
+        .collection("movieReviews")
+        .doc(movieId.toString())
+        .collection("users")
+        .doc(reviewOwnerUid)
+        .update({"likeCount": FieldValue.increment(1)});
+
+    print("LIKE COUNT UPDATED");
+  }
+
+  // ==========================
+  // UNLIKE REVIEW
+  // ==========================
+  static Future<void> unlikeReview({
+    required int movieId,
+    required String reviewOwnerUid,
+  }) async {
+    final uid = auth.currentUser!.uid;
+
+    final likeRef = firestore
+        .collection("movieReviews")
+        .doc(movieId.toString())
+        .collection("users")
+        .doc(reviewOwnerUid)
+        .collection("likes")
+        .doc(uid);
+
+    final doc = await likeRef.get();
+
+    if (!doc.exists) return;
+
+    await likeRef.delete();
+
+    await firestore
+        .collection("movieReviews")
+        .doc(movieId.toString())
+        .collection("users")
+        .doc(reviewOwnerUid)
+        .update({"likeCount": FieldValue.increment(-1)});
+  }
+
+  // ==========================
+  // SUDAH LIKE?
+  // ==========================
+  static Future<bool> isLiked({
+    required int movieId,
+    required String reviewOwnerUid,
+  }) async {
+    final uid = auth.currentUser!.uid;
+
+    final doc = await firestore
+        .collection("movieReviews")
+        .doc(movieId.toString())
+        .collection("users")
+        .doc(reviewOwnerUid)
+        .collection("likes")
+        .doc(uid)
+        .get();
+
+    return doc.exists;
+  }
+
+  // ==========================
+  // JUMLAH LIKE (Realtime)
+  // ==========================
+  static Stream<QuerySnapshot> getLikes({
+    required int movieId,
+    required String reviewOwnerUid,
+  }) {
+    return firestore
+        .collection("movieReviews")
+        .doc(movieId.toString())
+        .collection("users")
+        .doc(reviewOwnerUid)
+        .collection("likes")
+        .snapshots();
+  }
+}

@@ -42,6 +42,7 @@ dependencies:
   firebase_auth: ^6.0.0
   cloud_firestore: ^6.0.0
   youtube_player_flutter: ^9.1.1
+  timeago: ^3.7.1
 
 dev_dependencies:
   flutter_test:
