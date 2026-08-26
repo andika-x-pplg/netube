@@ -57,6 +57,7 @@ class ReviewService {
         .collection("movieReviews")
         .doc(movieId.toString())
         .collection("users")
+        .orderBy("likeCount", descending: true)
         .orderBy("createdAt", descending: true)
         .snapshots();
   }

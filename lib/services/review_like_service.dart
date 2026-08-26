@@ -14,6 +14,8 @@ class ReviewLikeService {
   }) async {
     final uid = auth.currentUser!.uid;
 
+    final username = auth.currentUser?.email?.split("@").first ?? "User";
+
     final likeRef = firestore
         .collection("movieReviews")
         .doc(movieId.toString())
@@ -26,7 +28,11 @@ class ReviewLikeService {
 
     if (doc.exists) return;
 
-    await likeRef.set({"uid": uid, "likedAt": FieldValue.serverTimestamp()});
+    await likeRef.set({
+      "uid": uid,
+      "username": username,
+      "likedAt": FieldValue.serverTimestamp(),
+    });
 
     print("LIKE DOCUMENT CREATED");
 
@@ -105,6 +111,23 @@ class ReviewLikeService {
         .collection("users")
         .doc(reviewOwnerUid)
         .collection("likes")
+        .snapshots();
+  }
+
+  // ==========================
+  // NAMA USER YANG LIKE
+  // ==========================
+  static Stream<QuerySnapshot> getLikerNames({
+    required int movieId,
+    required String reviewOwnerUid,
+  }) {
+    return firestore
+        .collection("movieReviews")
+        .doc(movieId.toString())
+        .collection("users")
+        .doc(reviewOwnerUid)
+        .collection("likes")
+        .orderBy("likedAt", descending: false)
         .snapshots();
   }
 }
