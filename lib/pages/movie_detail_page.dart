@@ -11,6 +11,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../services/review_like_service.dart';
 import '../services/reply_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/reply_like_service.dart';
 
 class MovieDetailPage extends StatefulWidget {
   final Map movie;
@@ -25,14 +26,15 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   bool isFavorite = false;
   bool isWatchLater = false;
   double myRating = 0;
+
+  String selectedReviewSort = "Newest";
+
   double communityRating = 0;
   int totalRatings = 0;
   final TextEditingController reviewController = TextEditingController();
   final TextEditingController replyController = TextEditingController();
   bool hasReviewed = false;
   String? reviewDocId;
-
-  String? animatingLikedReviewUid;
 
   @override
   void dispose() {
@@ -269,16 +271,74 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                   // ======================
                   // NETUBE COMMUNITY RATING
                   // ======================
-                  const Text(
-                    "Netube Community",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Community Netube",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF111827),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedReviewSort,
+
+                            dropdownColor: const Color(0xFF111827),
+
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down,
+                              color: Colors.white70,
+                            ),
+
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                            ),
+
+                            items: const [
+                              DropdownMenuItem(
+                                value: "Newest",
+                                child: Text("Newest"),
+                              ),
+                              DropdownMenuItem(
+                                value: "Oldest",
+                                child: Text("Oldest"),
+                              ),
+                              DropdownMenuItem(
+                                value: "Most Liked",
+                                child: Text("Most Liked"),
+                              ),
+                              DropdownMenuItem(
+                                value: "Highest Rating",
+                                child: Text("Highest Rating"),
+                              ),
+                            ],
+
+                            onChanged: (value) {
+                              if (value == null) return;
+
+                              setState(() {
+                                selectedReviewSort = value;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 15),
 
                   Row(
                     children: [
@@ -665,7 +725,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                   const SizedBox(height: 15),
 
                   StreamBuilder<QuerySnapshot>(
-                    stream: ReviewService.getReviews(widget.movie["id"]),
+                    stream: ReviewService.getReviews(
+                      widget.movie["id"],
+                      selectedReviewSort,
+                    ),
 
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
@@ -804,50 +867,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                                     // ========================
                                     // LIKE BUTTON
                                     // ========================
-                                    FutureBuilder<bool>(
-                                      future: ReviewLikeService.isLiked(
-                                        movieId: widget.movie["id"],
-                                        reviewOwnerUid: reviewOwnerUid,
-                                      ),
-                                      builder: (context, snapshot) {
-                                        print(snapshot.connectionState);
-                                        print(snapshot.hasData);
-                                        print(snapshot.data);
-
-                                        final liked = snapshot.data ?? false;
-
-                                        return TextButton.icon(
-                                          onPressed: () async {
-                                            if (liked) {
-                                              await ReviewLikeService.unlikeReview(
-                                                movieId: widget.movie["id"],
-                                                reviewOwnerUid: reviewOwnerUid,
-                                              );
-                                            } else {
-                                              await ReviewLikeService.likeReview(
-                                                movieId: widget.movie["id"],
-                                                reviewOwnerUid: reviewOwnerUid,
-                                              );
-                                            }
-
-                                            setState(() {});
-                                          },
-
-                                          icon: Icon(
-                                            liked
-                                                ? Icons.favorite
-                                                : Icons.favorite_border,
-                                            color: Colors.red,
-                                          ),
-
-                                          label: Text(
-                                            liked ? "Liked" : "Like",
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        );
-                                      },
+                                    ReviewLikeButton(
+                                      movieId: widget.movie["id"],
+                                      reviewOwnerUid: reviewOwnerUid,
                                     ),
 
                                     const SizedBox(width: 10),
@@ -1226,6 +1248,292 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                                                         fontSize: 13,
                                                       ),
                                                     ),
+
+                                                    const SizedBox(height: 8),
+
+                                                    const SizedBox(height: 6),
+
+                                                    // ==========================
+                                                    // NESTED REPLIES
+                                                    // ==========================
+                                                    StreamBuilder<
+                                                      QuerySnapshot
+                                                    >(
+                                                      stream:
+                                                          ReplyService.getNestedReplies(
+                                                            movieId: widget
+                                                                .movie["id"],
+                                                            reviewOwnerUid:
+                                                                reviewOwnerUid,
+                                                            parentReplyId:
+                                                                replyDoc.id,
+                                                          ),
+
+                                                      builder: (context, nestedSnapshot) {
+                                                        if (nestedSnapshot
+                                                            .hasError) {
+                                                          return const SizedBox.shrink();
+                                                        }
+
+                                                        if (!nestedSnapshot
+                                                                .hasData ||
+                                                            nestedSnapshot
+                                                                .data!
+                                                                .docs
+                                                                .isEmpty) {
+                                                          return const SizedBox.shrink();
+                                                        }
+
+                                                        final nestedReplies =
+                                                            nestedSnapshot
+                                                                .data!
+                                                                .docs;
+
+                                                        return Column(
+                                                          children: nestedReplies.map((
+                                                            nestedDoc,
+                                                          ) {
+                                                            final nested =
+                                                                nestedDoc.data()
+                                                                    as Map<
+                                                                      String,
+                                                                      dynamic
+                                                                    >;
+
+                                                            return Container(
+                                                              margin:
+                                                                  const EdgeInsets.only(
+                                                                    left: 25,
+                                                                    top: 8,
+                                                                  ),
+
+                                                              padding:
+                                                                  const EdgeInsets.all(
+                                                                    10,
+                                                                  ),
+
+                                                              decoration: BoxDecoration(
+                                                                color:
+                                                                    const Color(
+                                                                      0xFF080E1A,
+                                                                    ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      12,
+                                                                    ),
+                                                              ),
+
+                                                              child: Row(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+
+                                                                children: [
+                                                                  CircleAvatar(
+                                                                    radius: 14,
+                                                                    backgroundColor:
+                                                                        Colors
+                                                                            .blueGrey,
+
+                                                                    child: Text(
+                                                                      (nested["username"] ??
+                                                                              "U")
+                                                                          .toString()
+                                                                          .substring(
+                                                                            0,
+                                                                            1,
+                                                                          )
+                                                                          .toUpperCase(),
+
+                                                                      style: const TextStyle(
+                                                                        color: Colors
+                                                                            .white,
+                                                                        fontSize:
+                                                                            11,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+
+                                                                  const SizedBox(
+                                                                    width: 8,
+                                                                  ),
+
+                                                                  Expanded(
+                                                                    child: Column(
+                                                                      crossAxisAlignment:
+                                                                          CrossAxisAlignment
+                                                                              .start,
+
+                                                                      children: [
+                                                                        Text(
+                                                                          nested["username"] ??
+                                                                              "User",
+
+                                                                          style: const TextStyle(
+                                                                            color:
+                                                                                Colors.white,
+                                                                            fontWeight:
+                                                                                FontWeight.bold,
+                                                                            fontSize:
+                                                                                12,
+                                                                          ),
+                                                                        ),
+
+                                                                        const SizedBox(
+                                                                          height:
+                                                                              3,
+                                                                        ),
+
+                                                                        Text(
+                                                                          nested["reply"] ??
+                                                                              "",
+
+                                                                          style: const TextStyle(
+                                                                            color:
+                                                                                Colors.white70,
+                                                                            fontSize:
+                                                                                12,
+                                                                            height:
+                                                                                1.4,
+                                                                          ),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                          }).toList(),
+                                                        );
+                                                      },
+                                                    ),
+
+                                                    // ==========================
+                                                    // JUMLAH LIKE REPLY
+                                                    // ==========================
+                                                    Row(
+                                                      children: [
+                                                        ReplyLikeButton(
+                                                          movieId: widget
+                                                              .movie["id"],
+                                                          reviewOwnerUid:
+                                                              reviewOwnerUid,
+                                                          replyId: replyDoc.id,
+                                                        ),
+
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
+
+                                                        TextButton.icon(
+                                                          onPressed: () {
+                                                            replyController
+                                                                .clear();
+
+                                                            showDialog(
+                                                              context: context,
+                                                              builder: (context) {
+                                                                return AlertDialog(
+                                                                  backgroundColor:
+                                                                      const Color(
+                                                                        0xFF111827,
+                                                                      ),
+
+                                                                  title: Text(
+                                                                    "Reply to ${reply["username"] ?? "User"}",
+                                                                    style: const TextStyle(
+                                                                      color: Colors
+                                                                          .white,
+                                                                    ),
+                                                                  ),
+
+                                                                  content: TextField(
+                                                                    controller:
+                                                                        replyController,
+                                                                    maxLines: 3,
+                                                                    style: const TextStyle(
+                                                                      color: Colors
+                                                                          .white,
+                                                                    ),
+                                                                    decoration: const InputDecoration(
+                                                                      hintText:
+                                                                          "Write a reply...",
+                                                                      hintStyle: TextStyle(
+                                                                        color: Colors
+                                                                            .grey,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+
+                                                                  actions: [
+                                                                    TextButton(
+                                                                      onPressed: () {
+                                                                        Navigator.pop(
+                                                                          context,
+                                                                        );
+                                                                      },
+                                                                      child: const Text(
+                                                                        "Cancel",
+                                                                      ),
+                                                                    ),
+
+                                                                    ElevatedButton(
+                                                                      onPressed: () async {
+                                                                        final text = replyController
+                                                                            .text
+                                                                            .trim();
+
+                                                                        if (text
+                                                                            .isEmpty)
+                                                                          return;
+
+                                                                        await ReplyService.addNestedReply(
+                                                                          movieId:
+                                                                              widget.movie["id"],
+                                                                          reviewOwnerUid:
+                                                                              reviewOwnerUid,
+                                                                          parentReplyId:
+                                                                              replyDoc.id,
+                                                                          reply:
+                                                                              text,
+                                                                        );
+
+                                                                        if (!context
+                                                                            .mounted)
+                                                                          return;
+
+                                                                        Navigator.pop(
+                                                                          context,
+                                                                        );
+                                                                      },
+
+                                                                      child: const Text(
+                                                                        "Send",
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                );
+                                                              },
+                                                            );
+                                                          },
+                                                          icon: const Icon(
+                                                            Icons.reply,
+                                                            size: 17,
+                                                            color: Colors.blue,
+                                                          ),
+                                                          label: const Text(
+                                                            "Reply",
+                                                            style: TextStyle(
+                                                              color: Colors
+                                                                  .white70,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ],
                                                 ),
                                               ),
@@ -1251,6 +1559,269 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ==========================
+// WIDGET KHUSUS LIKE
+// ==========================
+class ReviewLikeButton extends StatefulWidget {
+  final int movieId;
+  final String reviewOwnerUid;
+
+  const ReviewLikeButton({
+    super.key,
+    required this.movieId,
+    required this.reviewOwnerUid,
+  });
+
+  @override
+  State<ReviewLikeButton> createState() => _ReviewLikeButtonState();
+}
+
+class _ReviewLikeButtonState extends State<ReviewLikeButton> {
+  bool liked = false;
+  bool loading = true;
+  bool animating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLikeStatus();
+  }
+
+  Future<void> _loadLikeStatus() async {
+    final result = await ReviewLikeService.isLiked(
+      movieId: widget.movieId,
+      reviewOwnerUid: widget.reviewOwnerUid,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      liked = result;
+      loading = false;
+    });
+  }
+
+  Future<void> _toggleLike() async {
+    if (loading || animating) return;
+
+    final newLiked = !liked;
+
+    // Langsung ubah icon supaya responsif
+    setState(() {
+      liked = newLiked;
+      animating = true;
+    });
+
+    try {
+      if (newLiked) {
+        await ReviewLikeService.likeReview(
+          movieId: widget.movieId,
+          reviewOwnerUid: widget.reviewOwnerUid,
+        );
+      } else {
+        await ReviewLikeService.unlikeReview(
+          movieId: widget.movieId,
+          reviewOwnerUid: widget.reviewOwnerUid,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      // Kalau Firebase gagal, kembalikan kondisi sebelumnya
+      setState(() {
+        liked = !newLiked;
+      });
+    }
+
+    await Future.delayed(const Duration(milliseconds: 220));
+
+    if (!mounted) return;
+
+    setState(() {
+      animating = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const SizedBox(width: 80, height: 40);
+    }
+
+    return TextButton.icon(
+      onPressed: _toggleLike,
+
+      icon: AnimatedScale(
+        scale: animating ? 1.35 : 1.0,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutBack,
+
+        child: Icon(
+          liked ? Icons.favorite : Icons.favorite_border,
+          color: Colors.red,
+        ),
+      ),
+
+      label: Text(
+        liked ? "Liked" : "Like",
+        style: const TextStyle(color: Colors.white),
+      ),
+    );
+  }
+}
+
+// ==========================
+// WIDGET LIKE REPLY
+// ==========================
+class ReplyLikeButton extends StatefulWidget {
+  final int movieId;
+  final String reviewOwnerUid;
+  final String replyId;
+
+  const ReplyLikeButton({
+    super.key,
+    required this.movieId,
+    required this.reviewOwnerUid,
+    required this.replyId,
+  });
+
+  @override
+  State<ReplyLikeButton> createState() => _ReplyLikeButtonState();
+}
+
+class _ReplyLikeButtonState extends State<ReplyLikeButton> {
+  bool liked = false;
+  bool loading = true;
+  bool animating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLikeStatus();
+  }
+
+  // ==========================
+  // CEK STATUS LIKE
+  // ==========================
+  Future<void> _loadLikeStatus() async {
+    final result = await ReplyLikeService.isLiked(
+      movieId: widget.movieId,
+      reviewOwnerUid: widget.reviewOwnerUid,
+      replyId: widget.replyId,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      liked = result;
+      loading = false;
+    });
+  }
+
+  // ==========================
+  // LIKE / UNLIKE
+  // ==========================
+  Future<void> _toggleLike() async {
+    if (loading || animating) return;
+
+    final newLiked = !liked;
+
+    setState(() {
+      liked = newLiked;
+      animating = true;
+    });
+
+    try {
+      if (newLiked) {
+        await ReplyLikeService.likeReply(
+          movieId: widget.movieId,
+          reviewOwnerUid: widget.reviewOwnerUid,
+          replyId: widget.replyId,
+        );
+      } else {
+        await ReplyLikeService.unlikeReply(
+          movieId: widget.movieId,
+          reviewOwnerUid: widget.reviewOwnerUid,
+          replyId: widget.replyId,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      // Kalau Firebase gagal,
+      // kembalikan status sebelumnya
+      setState(() {
+        liked = !newLiked;
+      });
+    }
+
+    await Future.delayed(const Duration(milliseconds: 220));
+
+    if (!mounted) return;
+
+    setState(() {
+      animating = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const SizedBox(width: 50, height: 30);
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: ReplyLikeService.getLikes(
+        movieId: widget.movieId,
+        reviewOwnerUid: widget.reviewOwnerUid,
+        replyId: widget.replyId,
+      ),
+
+      builder: (context, snapshot) {
+        final totalLikes = snapshot.data?.docs.length ?? 0;
+
+        return InkWell(
+          onTap: _toggleLike,
+          borderRadius: BorderRadius.circular(20),
+
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+
+              children: [
+                AnimatedScale(
+                  scale: animating ? 1.4 : 1.0,
+
+                  duration: const Duration(milliseconds: 180),
+
+                  curve: Curves.easeOutBack,
+
+                  child: Icon(
+                    liked ? Icons.favorite : Icons.favorite_border,
+
+                    color: Colors.red,
+                    size: 18,
+                  ),
+                ),
+
+                const SizedBox(width: 5),
+
+                Text(
+                  "$totalLikes",
+
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

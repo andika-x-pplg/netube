@@ -51,15 +51,36 @@ class ReviewService {
   // ==========================
   // STREAM REVIEW
   // ==========================
-
-  static Stream<QuerySnapshot> getReviews(int movieId) {
-    return firestore
+  static Stream<QuerySnapshot> getReviews(int movieId, String sort) {
+    Query query = firestore
         .collection("movieReviews")
         .doc(movieId.toString())
-        .collection("users")
-        .orderBy("likeCount", descending: true)
-        .orderBy("createdAt", descending: true)
-        .snapshots();
+        .collection("users");
+
+    switch (sort) {
+      case "Oldest":
+        query = query.orderBy("createdAt", descending: false);
+        break;
+
+      case "Most Liked":
+        query = query
+            .orderBy("likeCount", descending: true)
+            .orderBy("createdAt", descending: true);
+        break;
+
+      case "Highest Rating":
+        query = query
+            .orderBy("rating", descending: true)
+            .orderBy("createdAt", descending: true);
+        break;
+
+      case "Newest":
+      default:
+        query = query.orderBy("createdAt", descending: true);
+        break;
+    }
+
+    return query.snapshots();
   }
 
   static Future<DocumentSnapshot?> getMyReview(int movieId) async {
