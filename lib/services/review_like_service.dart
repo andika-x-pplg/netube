@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'notification_service.dart';
 
 class ReviewLikeService {
   static final FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -44,6 +45,14 @@ class ReviewLikeService {
         .update({"likeCount": FieldValue.increment(1)});
 
     print("LIKE COUNT UPDATED");
+
+    // ==========================
+    // BUAT NOTIFIKASI
+    // ==========================
+    await NotificationService.addReviewLikeNotifications(
+      movieId: movieId,
+      reviewOwnerUid: reviewOwnerUid,
+    );
   }
 
   // ==========================

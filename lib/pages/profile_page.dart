@@ -5,6 +5,8 @@ import 'login_page.dart';
 import 'subscriptions_page.dart';
 import 'watch_later_page.dart';
 
+import 'notifications_page.dart';
+
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
@@ -143,7 +145,17 @@ class ProfilePage extends StatelessWidget {
 
             _buildMenuItem(Icons.lock_outline, "Privacy Settings"),
 
-            _buildMenuItem(Icons.notifications_outlined, "Notifications"),
+            _buildMenuItem(
+              Icons.notifications_outlined,
+              "Notifications",
+
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationsPage()),
+                );
+              },
+            ),
 
             _buildMenuItem(Icons.help_outline, "Help Center"),
 
