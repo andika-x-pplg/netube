@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import 'login_page.dart';
 import 'subscriptions_page.dart';
 import 'watch_later_page.dart';
@@ -145,14 +146,60 @@ class ProfilePage extends StatelessWidget {
 
             _buildMenuItem(Icons.lock_outline, "Privacy Settings"),
 
-            _buildMenuItem(
-              Icons.notifications_outlined,
-              "Notifications",
+            // ==========================
+            // NOTIFICATIONS + UNREAD BADGE
+            // ==========================
+            StreamBuilder<int>(
+              stream: NotificationService.getUnreadCount(),
 
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NotificationsPage()),
+              builder: (context, snapshot) {
+                final unreadCount = snapshot.data ?? 0;
+
+                return _buildMenuItem(
+                  Icons.notifications_outlined,
+                  "Notifications",
+
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationsPage(),
+                      ),
+                    );
+                  },
+
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (unreadCount > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? "99+" : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+
+                      if (unreadCount > 0) const SizedBox(width: 10),
+
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.grey,
+                        size: 16,
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -224,7 +271,12 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(IconData icon, String title, {VoidCallback? onTap}) {
+  Widget _buildMenuItem(
+    IconData icon,
+    String title, {
+    VoidCallback? onTap,
+    Widget? trailing,
+  }) {
     return GestureDetector(
       onTap: onTap,
 
@@ -250,7 +302,12 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
 
-            const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+            trailing ??
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.grey,
+                  size: 16,
+                ),
           ],
         ),
       ),
