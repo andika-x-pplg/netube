@@ -36,6 +36,22 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   bool hasReviewed = false;
   String? reviewDocId;
 
+  // ==========================
+  // DROPDOWN REPLIES
+  // ==========================
+  final Set<String> expandedReviews = {};
+
+  // ==========================
+  // SEE MORE REPLIES
+  // ==========================
+  final Set<String> showAllReplies = {};
+
+  // ==========================
+  // TEMPORARY REPLY PREVIEW
+  // ==========================
+  final Map<String, String> temporaryReplyPreviews = {};
+  final Map<String, String> temporaryReplyIds = {};
+
   @override
   void dispose() {
     reviewController.dispose();
@@ -945,15 +961,31 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                                                       return;
                                                     }
 
-                                                    await ReplyService.addReply(
-                                                      movieId:
-                                                          widget.movie["id"],
-                                                      reviewOwnerUid:
-                                                          reviewOwnerUid,
-                                                      reply: replyController
-                                                          .text
-                                                          .trim(),
-                                                    );
+                                                    final text = replyController
+                                                        .text
+                                                        .trim();
+
+                                                    final newReplyId =
+                                                        await ReplyService.addReply(
+                                                          movieId: widget
+                                                              .movie["id"],
+                                                          reviewOwnerUid:
+                                                              reviewOwnerUid,
+                                                          reply: text,
+                                                        );
+
+                                                    if (!mounted) return;
+
+                                                    setState(() {
+                                                      temporaryReplyPreviews[reviewOwnerUid] =
+                                                          text;
+                                                      temporaryReplyIds[reviewOwnerUid] =
+                                                          newReplyId;
+                                                    });
+                                                    replyController.clear();
+
+                                                    if (!context.mounted)
+                                                      return;
 
                                                     Navigator.pop(context);
                                                   },
@@ -1081,466 +1113,654 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
 
                                     final replies = replySnapshot.data!.docs;
 
+                                    // Temporary reply
+                                    final temporaryReply =
+                                        temporaryReplyPreviews[reviewOwnerUid];
+
+                                    // ID temporary reply
+                                    final temporaryReplyId =
+                                        temporaryReplyIds[reviewOwnerUid];
+
+                                    // Hilangkan temporary reply dari list Firestore
+                                    // supaya tidak tampil 2 kali
+                                    final filteredReplies = replies.where((
+                                      doc,
+                                    ) {
+                                      return doc.id != temporaryReplyId;
+                                    }).toList();
+
+                                    // Apakah See More sedang aktif?
+                                    final isShowingAll = showAllReplies
+                                        .contains(reviewOwnerUid);
+
+                                    // Reply yang akan ditampilkan
+                                    final visibleReplies = isShowingAll
+                                        ? filteredReplies
+                                        : filteredReplies.take(3).toList();
+
+                                    // Apakah masih ada reply lainnya?
+                                    final hasMoreReplies =
+                                        filteredReplies.length > 3;
+
+                                    // Apakah dropdown sedang terbuka?
+                                    final isExpanded = expandedReviews.contains(
+                                      reviewOwnerUid,
+                                    );
+
                                     return Column(
-                                      children: replies.map((replyDoc) {
-                                        final reply =
-                                            replyDoc.data()
-                                                as Map<String, dynamic>;
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // ==========================
+                                        // TEMPORARY REPLY PREVIEW
+                                        // ==========================
+                                        if (temporaryReply != null)
+                                          Container(
+                                            margin: const EdgeInsets.only(
+                                              left: 35,
+                                              top: 8,
+                                              bottom: 4,
+                                            ),
+                                            padding: const EdgeInsets.all(12),
 
-                                        return Container(
-                                          margin: const EdgeInsets.only(
-                                            left: 35,
-                                            top: 8,
-                                          ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF0B1220),
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                              border: Border.all(
+                                                color: Colors.blueGrey,
+                                                width: 0.5,
+                                              ),
+                                            ),
 
-                                          padding: const EdgeInsets.all(12),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const CircleAvatar(
+                                                  radius: 16,
+                                                  backgroundColor: Colors.red,
+                                                  child: Icon(
+                                                    Icons.person,
+                                                    color: Colors.white,
+                                                    size: 17,
+                                                  ),
+                                                ),
 
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF0B1220),
-                                            borderRadius: BorderRadius.circular(
-                                              14,
+                                                const SizedBox(width: 10),
+
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      const Text(
+                                                        "You",
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 13,
+                                                        ),
+                                                      ),
+
+                                                      const SizedBox(height: 4),
+
+                                                      Text(
+                                                        temporaryReply,
+                                                        style: const TextStyle(
+                                                          color: Colors.white70,
+                                                          fontSize: 13,
+                                                          height: 1.4,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
 
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                        // ==========================
+                                        // DROPDOWN REPLIES
+                                        // ==========================
+                                        TextButton.icon(
+                                          onPressed: () {
+                                            setState(() {
+                                              if (isExpanded) {
+                                                expandedReviews.remove(
+                                                  reviewOwnerUid,
+                                                );
 
-                                            children: [
-                                              CircleAvatar(
-                                                radius: 16,
-                                                backgroundColor: Colors.red,
+                                                // Reset See more
+                                                showAllReplies.remove(
+                                                  reviewOwnerUid,
+                                                );
+                                              } else {
+                                                expandedReviews.add(
+                                                  reviewOwnerUid,
+                                                );
+                                              }
+                                            });
+                                          },
 
-                                                child: Text(
-                                                  (reply["username"] ?? "U")
-                                                      .toString()
-                                                      .substring(0, 1)
-                                                      .toUpperCase(),
+                                          icon: Icon(
+                                            isExpanded
+                                                ? Icons.keyboard_arrow_up
+                                                : Icons.keyboard_arrow_down,
+                                            color: Colors.grey,
+                                            size: 18,
+                                          ),
 
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
+                                          label: Text(
+                                            isExpanded
+                                                ? "Hide replies"
+                                                : "View replies (${replies.length})",
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+
+                                        // ==========================
+                                        // LIST REPLIES
+                                        // ==========================
+                                        if (isExpanded)
+                                          Column(
+                                            children: visibleReplies.map((
+                                              replyDoc,
+                                            ) {
+                                              final reply =
+                                                  replyDoc.data()
+                                                      as Map<String, dynamic>;
+
+                                              return Container(
+                                                margin: const EdgeInsets.only(
+                                                  left: 35,
+                                                  top: 8,
                                                 ),
-                                              ),
 
-                                              const SizedBox(width: 10),
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
 
-                                              Expanded(
-                                                child: Column(
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFF0B1220,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                ),
+
+                                                child: Row(
                                                   crossAxisAlignment:
                                                       CrossAxisAlignment.start,
+
                                                   children: [
-                                                    Row(
-                                                      children: [
-                                                        Expanded(
-                                                          child: Text(
-                                                            reply["username"] ??
-                                                                "User",
+                                                    CircleAvatar(
+                                                      radius: 16,
+                                                      backgroundColor:
+                                                          Colors.red,
+
+                                                      child: Text(
+                                                        (reply["username"] ??
+                                                                "U")
+                                                            .toString()
+                                                            .substring(0, 1)
+                                                            .toUpperCase(),
+
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(width: 10),
+
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Row(
+                                                            children: [
+                                                              Expanded(
+                                                                child: Text(
+                                                                  reply["username"] ??
+                                                                      "User",
+                                                                  style: const TextStyle(
+                                                                    color: Colors
+                                                                        .white,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    fontSize:
+                                                                        13,
+                                                                  ),
+                                                                ),
+                                                              ),
+
+                                                              // ==========================
+                                                              // DELETE REPLY
+                                                              // ==========================
+                                                              if (reply["uid"] ==
+                                                                  FirebaseAuth
+                                                                      .instance
+                                                                      .currentUser
+                                                                      ?.uid)
+                                                                IconButton(
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .zero,
+                                                                  constraints:
+                                                                      const BoxConstraints(),
+                                                                  icon: const Icon(
+                                                                    Icons
+                                                                        .delete_outline,
+                                                                    color: Colors
+                                                                        .red,
+                                                                    size: 18,
+                                                                  ),
+
+                                                                  onPressed: () async {
+                                                                    final confirm = await showDialog<bool>(
+                                                                      context:
+                                                                          context,
+                                                                      builder: (context) {
+                                                                        return AlertDialog(
+                                                                          title: const Text(
+                                                                            "Delete Reply",
+                                                                          ),
+
+                                                                          content: const Text(
+                                                                            "Are you sure you want to delete this reply?",
+                                                                          ),
+
+                                                                          actions: [
+                                                                            TextButton(
+                                                                              onPressed: () {
+                                                                                Navigator.pop(
+                                                                                  context,
+                                                                                  false,
+                                                                                );
+                                                                              },
+
+                                                                              child: const Text(
+                                                                                "Cancel",
+                                                                              ),
+                                                                            ),
+
+                                                                            ElevatedButton(
+                                                                              style: ElevatedButton.styleFrom(
+                                                                                backgroundColor: Colors.red,
+                                                                              ),
+
+                                                                              onPressed: () {
+                                                                                Navigator.pop(
+                                                                                  context,
+                                                                                  true,
+                                                                                );
+                                                                              },
+
+                                                                              child: const Text(
+                                                                                "Delete",
+                                                                              ),
+                                                                            ),
+                                                                          ],
+                                                                        );
+                                                                      },
+                                                                    );
+
+                                                                    if (confirm !=
+                                                                        true)
+                                                                      return;
+
+                                                                    await ReplyService.deleteReply(
+                                                                      movieId:
+                                                                          widget
+                                                                              .movie["id"],
+                                                                      reviewOwnerUid:
+                                                                          reviewOwnerUid,
+                                                                      replyId:
+                                                                          replyDoc
+                                                                              .id,
+                                                                    );
+                                                                  },
+                                                                ),
+                                                            ],
+                                                          ),
+
+                                                          const SizedBox(
+                                                            height: 4,
+                                                          ),
+
+                                                          Text(
+                                                            reply["reply"] ??
+                                                                "",
                                                             style:
                                                                 const TextStyle(
                                                                   color: Colors
-                                                                      .white,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
+                                                                      .white70,
+                                                                  height: 1.4,
                                                                   fontSize: 13,
                                                                 ),
                                                           ),
-                                                        ),
 
-                                                        // ==========================
-                                                        // DELETE REPLY
-                                                        // ==========================
-                                                        if (reply["uid"] ==
-                                                            FirebaseAuth
-                                                                .instance
-                                                                .currentUser
-                                                                ?.uid)
-                                                          IconButton(
-                                                            padding:
-                                                                EdgeInsets.zero,
-                                                            constraints:
-                                                                const BoxConstraints(),
-                                                            icon: const Icon(
-                                                              Icons
-                                                                  .delete_outline,
-                                                              color: Colors.red,
-                                                              size: 18,
+                                                          const SizedBox(
+                                                            height: 8,
+                                                          ),
+
+                                                          const SizedBox(
+                                                            height: 6,
+                                                          ),
+
+                                                          // ==========================
+                                                          // NESTED REPLIES
+                                                          // ==========================
+                                                          StreamBuilder<
+                                                            QuerySnapshot
+                                                          >(
+                                                            stream: ReplyService.getNestedReplies(
+                                                              movieId: widget
+                                                                  .movie["id"],
+                                                              reviewOwnerUid:
+                                                                  reviewOwnerUid,
+                                                              parentReplyId:
+                                                                  replyDoc.id,
                                                             ),
 
-                                                            onPressed: () async {
-                                                              final confirm = await showDialog<bool>(
-                                                                context:
-                                                                    context,
-                                                                builder: (context) {
-                                                                  return AlertDialog(
-                                                                    title: const Text(
-                                                                      "Delete Reply",
-                                                                    ),
+                                                            builder:
+                                                                (
+                                                                  context,
+                                                                  nestedSnapshot,
+                                                                ) {
+                                                                  if (nestedSnapshot
+                                                                      .hasError) {
+                                                                    return const SizedBox.shrink();
+                                                                  }
 
-                                                                    content:
-                                                                        const Text(
-                                                                          "Are you sure you want to delete this reply?",
+                                                                  if (!nestedSnapshot
+                                                                          .hasData ||
+                                                                      nestedSnapshot
+                                                                          .data!
+                                                                          .docs
+                                                                          .isEmpty) {
+                                                                    return const SizedBox.shrink();
+                                                                  }
+
+                                                                  final nestedReplies =
+                                                                      nestedSnapshot
+                                                                          .data!
+                                                                          .docs;
+
+                                                                  return Column(
+                                                                    children: nestedReplies.map((
+                                                                      nestedDoc,
+                                                                    ) {
+                                                                      final nested =
+                                                                          nestedDoc.data()
+                                                                              as Map<
+                                                                                String,
+                                                                                dynamic
+                                                                              >;
+
+                                                                      return Container(
+                                                                        margin: const EdgeInsets.only(
+                                                                          left:
+                                                                              25,
+                                                                          top:
+                                                                              8,
                                                                         ),
 
-                                                                    actions: [
-                                                                      TextButton(
-                                                                        onPressed: () {
-                                                                          Navigator.pop(
-                                                                            context,
-                                                                            false,
-                                                                          );
-                                                                        },
+                                                                        padding:
+                                                                            const EdgeInsets.all(
+                                                                              10,
+                                                                            ),
 
-                                                                        child: const Text(
-                                                                          "Cancel",
-                                                                        ),
-                                                                      ),
-
-                                                                      ElevatedButton(
-                                                                        style: ElevatedButton.styleFrom(
-                                                                          backgroundColor:
-                                                                              Colors.red,
+                                                                        decoration: BoxDecoration(
+                                                                          color: const Color(
+                                                                            0xFF080E1A,
+                                                                          ),
+                                                                          borderRadius: BorderRadius.circular(
+                                                                            12,
+                                                                          ),
                                                                         ),
 
-                                                                        onPressed: () {
-                                                                          Navigator.pop(
-                                                                            context,
-                                                                            true,
-                                                                          );
-                                                                        },
+                                                                        child: Row(
+                                                                          crossAxisAlignment:
+                                                                              CrossAxisAlignment.start,
 
-                                                                        child: const Text(
-                                                                          "Delete",
+                                                                          children: [
+                                                                            CircleAvatar(
+                                                                              radius: 14,
+                                                                              backgroundColor: Colors.blueGrey,
+
+                                                                              child: Text(
+                                                                                (nested["username"] ??
+                                                                                        "U")
+                                                                                    .toString()
+                                                                                    .substring(
+                                                                                      0,
+                                                                                      1,
+                                                                                    )
+                                                                                    .toUpperCase(),
+
+                                                                                style: const TextStyle(
+                                                                                  color: Colors.white,
+                                                                                  fontSize: 11,
+                                                                                  fontWeight: FontWeight.bold,
+                                                                                ),
+                                                                              ),
+                                                                            ),
+
+                                                                            const SizedBox(
+                                                                              width: 8,
+                                                                            ),
+
+                                                                            Expanded(
+                                                                              child: Column(
+                                                                                crossAxisAlignment: CrossAxisAlignment.start,
+
+                                                                                children: [
+                                                                                  Text(
+                                                                                    nested["username"] ??
+                                                                                        "User",
+
+                                                                                    style: const TextStyle(
+                                                                                      color: Colors.white,
+                                                                                      fontWeight: FontWeight.bold,
+                                                                                      fontSize: 12,
+                                                                                    ),
+                                                                                  ),
+
+                                                                                  const SizedBox(
+                                                                                    height: 3,
+                                                                                  ),
+
+                                                                                  Text(
+                                                                                    nested["reply"] ??
+                                                                                        "",
+
+                                                                                    style: const TextStyle(
+                                                                                      color: Colors.white70,
+                                                                                      fontSize: 12,
+                                                                                      height: 1.4,
+                                                                                    ),
+                                                                                  ),
+                                                                                ],
+                                                                              ),
+                                                                            ),
+                                                                          ],
                                                                         ),
-                                                                      ),
-                                                                    ],
+                                                                      );
+                                                                    }).toList(),
                                                                   );
                                                                 },
-                                                              );
+                                                          ),
 
-                                                              if (confirm !=
-                                                                  true)
-                                                                return;
-
-                                                              await ReplyService.deleteReply(
+                                                          // ==========================
+                                                          // JUMLAH LIKE REPLY
+                                                          // ==========================
+                                                          Row(
+                                                            children: [
+                                                              ReplyLikeButton(
                                                                 movieId: widget
                                                                     .movie["id"],
                                                                 reviewOwnerUid:
                                                                     reviewOwnerUid,
                                                                 replyId:
                                                                     replyDoc.id,
-                                                              );
-                                                            },
-                                                          ),
-                                                      ],
-                                                    ),
-
-                                                    const SizedBox(height: 4),
-
-                                                    Text(
-                                                      reply["reply"] ?? "",
-                                                      style: const TextStyle(
-                                                        color: Colors.white70,
-                                                        height: 1.4,
-                                                        fontSize: 13,
-                                                      ),
-                                                    ),
-
-                                                    const SizedBox(height: 8),
-
-                                                    const SizedBox(height: 6),
-
-                                                    // ==========================
-                                                    // NESTED REPLIES
-                                                    // ==========================
-                                                    StreamBuilder<
-                                                      QuerySnapshot
-                                                    >(
-                                                      stream:
-                                                          ReplyService.getNestedReplies(
-                                                            movieId: widget
-                                                                .movie["id"],
-                                                            reviewOwnerUid:
-                                                                reviewOwnerUid,
-                                                            parentReplyId:
-                                                                replyDoc.id,
-                                                          ),
-
-                                                      builder: (context, nestedSnapshot) {
-                                                        if (nestedSnapshot
-                                                            .hasError) {
-                                                          return const SizedBox.shrink();
-                                                        }
-
-                                                        if (!nestedSnapshot
-                                                                .hasData ||
-                                                            nestedSnapshot
-                                                                .data!
-                                                                .docs
-                                                                .isEmpty) {
-                                                          return const SizedBox.shrink();
-                                                        }
-
-                                                        final nestedReplies =
-                                                            nestedSnapshot
-                                                                .data!
-                                                                .docs;
-
-                                                        return Column(
-                                                          children: nestedReplies.map((
-                                                            nestedDoc,
-                                                          ) {
-                                                            final nested =
-                                                                nestedDoc.data()
-                                                                    as Map<
-                                                                      String,
-                                                                      dynamic
-                                                                    >;
-
-                                                            return Container(
-                                                              margin:
-                                                                  const EdgeInsets.only(
-                                                                    left: 25,
-                                                                    top: 8,
-                                                                  ),
-
-                                                              padding:
-                                                                  const EdgeInsets.all(
-                                                                    10,
-                                                                  ),
-
-                                                              decoration: BoxDecoration(
-                                                                color:
-                                                                    const Color(
-                                                                      0xFF080E1A,
-                                                                    ),
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      12,
-                                                                    ),
                                                               ),
 
-                                                              child: Row(
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment
-                                                                        .start,
+                                                              const SizedBox(
+                                                                width: 12,
+                                                              ),
 
-                                                                children: [
-                                                                  CircleAvatar(
-                                                                    radius: 14,
-                                                                    backgroundColor:
-                                                                        Colors
-                                                                            .blueGrey,
+                                                              TextButton.icon(
+                                                                onPressed: () {
+                                                                  replyController
+                                                                      .clear();
 
-                                                                    child: Text(
-                                                                      (nested["username"] ??
-                                                                              "U")
-                                                                          .toString()
-                                                                          .substring(
-                                                                            0,
-                                                                            1,
-                                                                          )
-                                                                          .toUpperCase(),
+                                                                  showDialog(
+                                                                    context:
+                                                                        context,
+                                                                    builder: (context) {
+                                                                      return AlertDialog(
+                                                                        backgroundColor:
+                                                                            const Color(
+                                                                              0xFF111827,
+                                                                            ),
 
-                                                                      style: const TextStyle(
-                                                                        color: Colors
-                                                                            .white,
-                                                                        fontSize:
-                                                                            11,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-
-                                                                  const SizedBox(
-                                                                    width: 8,
-                                                                  ),
-
-                                                                  Expanded(
-                                                                    child: Column(
-                                                                      crossAxisAlignment:
-                                                                          CrossAxisAlignment
-                                                                              .start,
-
-                                                                      children: [
-                                                                        Text(
-                                                                          nested["username"] ??
-                                                                              "User",
-
+                                                                        title: Text(
+                                                                          "Reply to ${reply["username"] ?? "User"}",
                                                                           style: const TextStyle(
                                                                             color:
                                                                                 Colors.white,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            fontSize:
-                                                                                12,
                                                                           ),
                                                                         ),
 
-                                                                        const SizedBox(
-                                                                          height:
+                                                                        content: TextField(
+                                                                          controller:
+                                                                              replyController,
+                                                                          maxLines:
                                                                               3,
-                                                                        ),
-
-                                                                        Text(
-                                                                          nested["reply"] ??
-                                                                              "",
-
                                                                           style: const TextStyle(
                                                                             color:
-                                                                                Colors.white70,
-                                                                            fontSize:
-                                                                                12,
-                                                                            height:
-                                                                                1.4,
+                                                                                Colors.white,
+                                                                          ),
+                                                                          decoration: const InputDecoration(
+                                                                            hintText:
+                                                                                "Write a reply...",
+                                                                            hintStyle: TextStyle(
+                                                                              color: Colors.grey,
+                                                                            ),
                                                                           ),
                                                                         ),
-                                                                      ],
-                                                                    ),
+
+                                                                        actions: [
+                                                                          TextButton(
+                                                                            onPressed: () {
+                                                                              Navigator.pop(
+                                                                                context,
+                                                                              );
+                                                                            },
+                                                                            child: const Text(
+                                                                              "Cancel",
+                                                                            ),
+                                                                          ),
+
+                                                                          ElevatedButton(
+                                                                            onPressed: () async {
+                                                                              final text = replyController.text.trim();
+
+                                                                              if (text.isEmpty)
+                                                                                return;
+
+                                                                              await ReplyService.addNestedReply(
+                                                                                movieId: widget.movie["id"],
+                                                                                reviewOwnerUid: reviewOwnerUid,
+                                                                                parentReplyId: replyDoc.id,
+                                                                                reply: text,
+                                                                              );
+
+                                                                              if (!context.mounted)
+                                                                                return;
+
+                                                                              Navigator.pop(
+                                                                                context,
+                                                                              );
+                                                                            },
+
+                                                                            child: const Text(
+                                                                              "Send",
+                                                                            ),
+                                                                          ),
+                                                                        ],
+                                                                      );
+                                                                    },
+                                                                  );
+                                                                },
+                                                                icon: const Icon(
+                                                                  Icons.reply,
+                                                                  size: 17,
+                                                                  color: Colors
+                                                                      .blue,
+                                                                ),
+                                                                label: const Text(
+                                                                  "Reply",
+                                                                  style: TextStyle(
+                                                                    color: Colors
+                                                                        .white70,
+                                                                    fontSize:
+                                                                        12,
                                                                   ),
-                                                                ],
+                                                                ),
                                                               ),
-                                                            );
-                                                          }).toList(),
-                                                        );
-                                                      },
-                                                    ),
-
-                                                    // ==========================
-                                                    // JUMLAH LIKE REPLY
-                                                    // ==========================
-                                                    Row(
-                                                      children: [
-                                                        ReplyLikeButton(
-                                                          movieId: widget
-                                                              .movie["id"],
-                                                          reviewOwnerUid:
-                                                              reviewOwnerUid,
-                                                          replyId: replyDoc.id,
-                                                        ),
-
-                                                        const SizedBox(
-                                                          width: 12,
-                                                        ),
-
-                                                        TextButton.icon(
-                                                          onPressed: () {
-                                                            replyController
-                                                                .clear();
-
-                                                            showDialog(
-                                                              context: context,
-                                                              builder: (context) {
-                                                                return AlertDialog(
-                                                                  backgroundColor:
-                                                                      const Color(
-                                                                        0xFF111827,
-                                                                      ),
-
-                                                                  title: Text(
-                                                                    "Reply to ${reply["username"] ?? "User"}",
-                                                                    style: const TextStyle(
-                                                                      color: Colors
-                                                                          .white,
-                                                                    ),
-                                                                  ),
-
-                                                                  content: TextField(
-                                                                    controller:
-                                                                        replyController,
-                                                                    maxLines: 3,
-                                                                    style: const TextStyle(
-                                                                      color: Colors
-                                                                          .white,
-                                                                    ),
-                                                                    decoration: const InputDecoration(
-                                                                      hintText:
-                                                                          "Write a reply...",
-                                                                      hintStyle: TextStyle(
-                                                                        color: Colors
-                                                                            .grey,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-
-                                                                  actions: [
-                                                                    TextButton(
-                                                                      onPressed: () {
-                                                                        Navigator.pop(
-                                                                          context,
-                                                                        );
-                                                                      },
-                                                                      child: const Text(
-                                                                        "Cancel",
-                                                                      ),
-                                                                    ),
-
-                                                                    ElevatedButton(
-                                                                      onPressed: () async {
-                                                                        final text = replyController
-                                                                            .text
-                                                                            .trim();
-
-                                                                        if (text
-                                                                            .isEmpty)
-                                                                          return;
-
-                                                                        await ReplyService.addNestedReply(
-                                                                          movieId:
-                                                                              widget.movie["id"],
-                                                                          reviewOwnerUid:
-                                                                              reviewOwnerUid,
-                                                                          parentReplyId:
-                                                                              replyDoc.id,
-                                                                          reply:
-                                                                              text,
-                                                                        );
-
-                                                                        if (!context
-                                                                            .mounted)
-                                                                          return;
-
-                                                                        Navigator.pop(
-                                                                          context,
-                                                                        );
-                                                                      },
-
-                                                                      child: const Text(
-                                                                        "Send",
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                );
-                                                              },
-                                                            );
-                                                          },
-                                                          icon: const Icon(
-                                                            Icons.reply,
-                                                            size: 17,
-                                                            color: Colors.blue,
+                                                            ],
                                                           ),
-                                                          label: const Text(
-                                                            "Reply",
-                                                            style: TextStyle(
-                                                              color: Colors
-                                                                  .white70,
-                                                              fontSize: 12,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
+                                                        ],
+                                                      ),
                                                     ),
                                                   ],
                                                 ),
-                                              ),
-                                            ],
+                                              );
+                                            }).toList(),
                                           ),
-                                        );
-                                      }).toList(),
+
+                                        if (isExpanded &&
+                                            hasMoreReplies &&
+                                            !isShowingAll)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 35,
+                                              top: 6,
+                                            ),
+                                            child: TextButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  showAllReplies.add(
+                                                    reviewOwnerUid,
+                                                  );
+                                                });
+                                              },
+                                              child: const Text(
+                                                "See more",
+                                                style: TextStyle(
+                                                  color: Colors.blue,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     );
                                   },
                                 ),

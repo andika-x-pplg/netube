@@ -8,7 +8,7 @@ class ReplyService {
   // ==========================
   // ADD REPLY
   // ==========================
-  static Future<void> addReply({
+  static Future<String> addReply({
     required int movieId,
     required String reviewOwnerUid,
     required String reply,
@@ -17,7 +17,7 @@ class ReplyService {
 
     final username = user.email?.split("@").first ?? "User";
 
-    await firestore
+    final replyDoc = await firestore
         .collection("movieReviews")
         .doc(movieId.toString())
         .collection("users")
@@ -29,6 +29,8 @@ class ReplyService {
           "reply": reply,
           "createdAt": FieldValue.serverTimestamp(),
         });
+
+    return replyDoc.id;
   }
 
   // ==========================

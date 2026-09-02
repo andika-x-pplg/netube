@@ -87,84 +87,97 @@ class NotificationsPage extends StatelessWidget {
 
               final isRead = notification["isRead"] ?? false;
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
+              return InkWell(
+                borderRadius: BorderRadius.circular(16),
 
-                padding: const EdgeInsets.all(14),
+                onTap: () async {
+                  if (!isRead) {
+                    await NotificationService.markAsRead(notificationDoc.id);
+                  }
+                },
 
-                decoration: BoxDecoration(
-                  color: isRead
-                      ? const Color(0xFF111827)
-                      : const Color(0xFF172033),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
 
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                  padding: const EdgeInsets.all(14),
 
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  decoration: BoxDecoration(
+                    color: isRead
+                        ? const Color(0xFF111827)
+                        : const Color(0xFF172033),
 
-                  children: [
-                    // ICON
-                    Container(
-                      width: 42,
-                      height: 42,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
 
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                      ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
 
-                      child: const Icon(
-                        Icons.favorite,
-                        color: Colors.red,
-                        size: 21,
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // Text
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-
-                        children: [
-                          Text(
-                            notification["message"] ?? "Notifikasi baru",
-
-                            style: TextStyle(
-                              color: Colors.white,
-
-                              fontSize: 14,
-
-                              fontWeight: isRead
-                                  ? FontWeight.normal
-                                  : FontWeight.bold,
-                            ),
-                          ),
-
-                          const SizedBox(height: 5),
-
-                          const Text(
-                            "Baru saja",
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // TITIK BELUM DIBACA
-                    if (!isRead)
+                    children: [
+                      // ICON
                       Container(
-                        width: 8,
-                        height: 8,
+                        width: 42,
+                        height: 42,
 
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.15),
                           shape: BoxShape.circle,
                         ),
+
+                        child: const Icon(
+                          Icons.favorite,
+                          color: Colors.red,
+                          size: 21,
+                        ),
                       ),
-                  ],
+
+                      const SizedBox(width: 12),
+
+                      // Text
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+
+                          children: [
+                            Text(
+                              notification["message"] ?? "Notifikasi baru",
+
+                              style: TextStyle(
+                                color: Colors.white,
+
+                                fontSize: 14,
+
+                                fontWeight: isRead
+                                    ? FontWeight.normal
+                                    : FontWeight.bold,
+                              ),
+                            ),
+
+                            const SizedBox(height: 5),
+
+                            const Text(
+                              "Baru saja",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // TITIK BELUM DIBACA
+                      if (!isRead)
+                        Container(
+                          width: 8,
+                          height: 8,
+
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               );
             },
