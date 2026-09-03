@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'home_page.dart';
+import '../theme/netube_theme.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -19,7 +20,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050B18),
+      backgroundColor: NetubeColors.background,
 
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
 
@@ -45,7 +46,7 @@ class _RegisterPageState extends State<RegisterPage> {
             const SizedBox(height: 10),
 
             Text(
-              "Join Netube today 🚀",
+              "Your next story starts here.",
 
               style: TextStyle(color: Colors.grey.shade400, fontSize: 18),
             ),
@@ -86,7 +87,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   backgroundColor: Colors.redAccent,
 
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
 
@@ -151,10 +152,10 @@ class _RegisterPageState extends State<RegisterPage> {
         prefixIcon: Icon(icon, color: Colors.grey),
 
         filled: true,
-        fillColor: const Color(0xFF111827),
+        fillColor: NetubeColors.surfaceHigh,
 
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
 
           borderSide: BorderSide.none,
         ),

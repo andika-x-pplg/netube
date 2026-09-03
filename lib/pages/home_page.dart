@@ -1,1441 +1,281 @@
 import 'package:flutter/material.dart';
 
-import '../widgets/custom_drawer.dart';
-import '../widgets/bottom_navbar.dart';
-import '../widgets/movie_card.dart';
-
-import '../pages/profile_page.dart';
-import '../pages/featured_movies_page.dart';
-import '../pages/trending_now_page.dart';
-
-import '../pages/search_page.dart';
 import '../services/api_service.dart';
-
-import '../pages/genre_movies_page.dart';
-import '../widgets/movie_shimmer.dart';
-
-import '../pages/favorite_page.dart';
+import '../services/notification_service.dart';
+import '../services/watch_later_service.dart';
+import '../theme/netube_theme.dart';
+import '../widgets/bottom_navbar.dart';
+import '../widgets/custom_drawer.dart';
+import '../widgets/movie_card.dart';
+import 'movie_detail_page.dart';
+import 'notifications_page.dart';
+import 'profile_page.dart';
+import 'search_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
-
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  final ScrollController featuredController = ScrollController();
-  final ScrollController trendingController = ScrollController();
-  final ScrollController actionController = ScrollController();
-  final ScrollController horrorController = ScrollController();
-  final ScrollController animationController = ScrollController();
-  final ScrollController comedyController = ScrollController();
-  final ScrollController romanceController = ScrollController();
-  final ScrollController sciFiController = ScrollController();
-  final ScrollController animeController = ScrollController();
+  late final Future<List<dynamic>> popular = ApiService.getFeaturedMovies();
+  late final Future<List<dynamic>> trending = ApiService.getTrendingMovies();
+  late final Future<List<dynamic>> action = ApiService.getMoviesByGenre(28);
+  late final Future<List<dynamic>> sciFi = ApiService.getMoviesByGenre(878);
+  late final Future<List<dynamic>> animation = ApiService.getMoviesByGenre(16);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050B18),
-
       drawer: const CustomDrawer(),
-
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF050B18),
-        elevation: 0,
-
-        // MENU BUTTON
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-
-        centerTitle: true,
-
-        // NETUBE GRADIENT
-        title: ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Colors.red, Colors.orange],
-          ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-
-          child: const Text(
-            "Netube",
-
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+      bottomNavigationBar: const BottomNavbar(currentIndex: 0),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            floating: true,
+            snap: true,
+            title: const Text(
+              'NETUBE',
+              style: TextStyle(
+                color: NetubeColors.accent,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+              ),
             ),
-          ),
-        ),
-
-        // PROFILE ICON
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.favorite, color: Colors.redAccent),
-
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FavoritePage()),
-              );
-            },
-          ),
-
-          IconButton(
-            icon: const Icon(
-              Icons.person_outline,
-              color: Colors.white,
-              size: 28,
-            ),
-
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()),
-              );
-            },
-          ),
-
-          const SizedBox(width: 10),
-        ],
-      ),
-
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-
-            children: [
-              // SEARCH BAR
-              TextField(
-                readOnly: true,
-
-                onTap: () {
-                  Navigator.push(
+            actions: [
+              IconButton(
+                tooltip: 'Search',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()),
+                ),
+                icon: const Icon(Icons.search_rounded),
+              ),
+              StreamBuilder<int>(
+                stream: NotificationService.getUnreadCount(),
+                builder: (context, snapshot) => Badge(
+                  isLabelVisible: (snapshot.data ?? 0) > 0,
+                  label: Text('${snapshot.data ?? 0}'),
+                  child: IconButton(
+                    tooltip: 'Notifications',
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationsPage(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.notifications_none_rounded),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 12, left: 4),
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SearchPage()),
-                  );
-                },
-
-                style: const TextStyle(color: Colors.white),
-
-                decoration: InputDecoration(
-                  hintText: "Search movies...",
-
-                  hintStyle: const TextStyle(color: Colors.grey),
-
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
-
-                  filled: true,
-                  fillColor: Colors.white10,
-
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
+                    MaterialPageRoute(builder: (_) => const ProfilePage()),
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Featured Movies",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const FeaturedMoviesPage(),
-                            ),
-                          );
-                        },
-
-                        child: const Text(
-                          "See All",
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: const CircleAvatar(
+                    radius: 15,
+                    backgroundImage: NetworkImage('https://i.pravatar.cc/100'),
                   ),
-
-                  Row(
-                    children: [
-                      // LEFT BUTTON
-                      GestureDetector(
-                        onTap: () {
-                          featuredController.animateTo(
-                            featuredController.offset - 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      // RIGHT BUTTON
-                      GestureDetector(
-                        onTap: () {
-                          featuredController.animateTo(
-                            featuredController.offset + 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // MOVIE LIST
-              SizedBox(
-                height: 320,
-
-                child: FutureBuilder(
-                  future: ApiService.getFeaturedMovies(),
-
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const MovieShimmer();
-                    }
-
-                    final movies = snapshot.data!;
-
-                    return ListView.builder(
-                      controller: featuredController,
-
-                      scrollDirection: Axis.horizontal,
-
-                      itemCount: movies.length,
-
-                      itemBuilder: (context, index) {
-                        final movie = movies[index];
-
-                        return MovieCard(movie: movie);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // TRENDING NOW
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Trending Now",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const TrendingNowPage(),
-                            ),
-                          );
-                        },
-
-                        child: const Text(
-                          "See All",
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Row(
-                    children: [
-                      // LEFT BUTTON
-                      GestureDetector(
-                        onTap: () {
-                          trendingController.animateTo(
-                            trendingController.offset - 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      // RIGHT BUTTON
-                      GestureDetector(
-                        onTap: () {
-                          trendingController.animateTo(
-                            trendingController.offset + 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // MOVIE LIST
-              SizedBox(
-                height: 320,
-
-                child: FutureBuilder(
-                  future: ApiService.getTrendingMovies(),
-
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const MovieShimmer();
-                    }
-
-                    final movies = snapshot.data!;
-
-                    return ListView.builder(
-                      controller: trendingController,
-
-                      scrollDirection: Axis.horizontal,
-
-                      itemCount: movies.length,
-
-                      itemBuilder: (context, index) {
-                        final movie = movies[index];
-
-                        return MovieCard(movie: movie);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // ================= ACTION =================
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Action",
-
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  GenreMoviesPage(title: "Action", genreId: 27),
-                            ),
-                          );
-                        },
-
-                        child: const Text(
-                          "See All",
-
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Row(
-                    children: [
-                      // LEFT
-                      GestureDetector(
-                        onTap: () {
-                          actionController.animateTo(
-                            actionController.offset - 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      // RIGHT
-                      GestureDetector(
-                        onTap: () {
-                          actionController.animateTo(
-                            actionController.offset + 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 320,
-
-                child: FutureBuilder(
-                  future: ApiService.getMoviesByGenre(27),
-
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const MovieShimmer();
-                    }
-
-                    final movies = snapshot.data!;
-
-                    return ListView.builder(
-                      controller: actionController,
-
-                      scrollDirection: Axis.horizontal,
-
-                      itemCount: movies.length,
-
-                      itemBuilder: (context, index) {
-                        final movie = movies[index];
-
-                        return MovieCard(movie: movie);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // ================= HORROR =================
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Horrors",
-
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-
-                            MaterialPageRoute(
-                              builder: (context) => GenreMoviesPage(
-                                title: "Horrors",
-                                genreId: 28,
-                              ),
-                            ),
-                          );
-                        },
-
-                        child: const Text(
-                          "See All",
-
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Row(
-                    children: [
-                      // LEFT
-                      GestureDetector(
-                        onTap: () {
-                          horrorController.animateTo(
-                            horrorController.offset - 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      // RIGHT
-                      GestureDetector(
-                        onTap: () {
-                          horrorController.animateTo(
-                            horrorController.offset + 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 320,
-
-                child: FutureBuilder(
-                  future: ApiService.getMoviesByGenre(28),
-
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const MovieShimmer();
-                    }
-
-                    final movies = snapshot.data!;
-
-                    return ListView.builder(
-                      controller: horrorController,
-
-                      scrollDirection: Axis.horizontal,
-
-                      itemCount: movies.length,
-
-                      itemBuilder: (context, index) {
-                        final movie = movies[index];
-
-                        return MovieCard(movie: movie);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // ================= ANIMATION =================
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Animation",
-
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-
-                            MaterialPageRoute(
-                              builder: (context) => GenreMoviesPage(
-                                title: "Animation",
-                                genreId: 16,
-                              ),
-                            ),
-                          );
-                        },
-
-                        child: const Text(
-                          "See All",
-
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Row(
-                    children: [
-                      // LEFT
-                      GestureDetector(
-                        onTap: () {
-                          animationController.animateTo(
-                            animationController.offset - 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      // RIGHT
-                      GestureDetector(
-                        onTap: () {
-                          animationController.animateTo(
-                            animationController.offset + 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 320,
-
-                child: FutureBuilder(
-                  future: ApiService.getMoviesByGenre(16),
-
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const MovieShimmer();
-                    }
-
-                    final movies = snapshot.data!;
-
-                    return ListView.builder(
-                      controller: animationController,
-
-                      scrollDirection: Axis.horizontal,
-
-                      itemCount: movies.length,
-
-                      itemBuilder: (context, index) {
-                        final movie = movies[index];
-
-                        return MovieCard(movie: movie);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // ================= COMEDY =================
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Comedy",
-
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  GenreMoviesPage(title: "Comedy", genreId: 35),
-                            ),
-                          );
-                        },
-
-                        child: const Text(
-                          "See All",
-
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Row(
-                    children: [
-                      // LEFT
-                      GestureDetector(
-                        onTap: () {
-                          comedyController.animateTo(
-                            comedyController.offset - 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      // RIGHT
-                      GestureDetector(
-                        onTap: () {
-                          comedyController.animateTo(
-                            comedyController.offset + 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 320,
-
-                child: FutureBuilder(
-                  future: ApiService.getMoviesByGenre(35),
-
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const MovieShimmer();
-                    }
-
-                    final movies = snapshot.data!;
-
-                    return ListView.builder(
-                      controller: comedyController,
-
-                      scrollDirection: Axis.horizontal,
-
-                      itemCount: movies.length,
-
-                      itemBuilder: (context, index) {
-                        final movie = movies[index];
-
-                        return MovieCard(movie: movie);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // ================= ROMANCE =================
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Romance",
-
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-
-                            MaterialPageRoute(
-                              builder: (context) => GenreMoviesPage(
-                                title: "Romance",
-                                genreId: 10749,
-                              ),
-                            ),
-                          );
-                        },
-
-                        child: const Text(
-                          "See All",
-
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Row(
-                    children: [
-                      // LEFT
-                      GestureDetector(
-                        onTap: () {
-                          romanceController.animateTo(
-                            romanceController.offset - 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      // RIGHT
-                      GestureDetector(
-                        onTap: () {
-                          romanceController.animateTo(
-                            romanceController.offset + 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 320,
-
-                child: FutureBuilder(
-                  future: ApiService.getMoviesByGenre(10749),
-
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const MovieShimmer();
-                    }
-
-                    final movies = snapshot.data!;
-
-                    return ListView.builder(
-                      controller: romanceController,
-
-                      scrollDirection: Axis.horizontal,
-
-                      itemCount: movies.length,
-
-                      itemBuilder: (context, index) {
-                        final movie = movies[index];
-
-                        return MovieCard(movie: movie);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // ================= SCI-FI =================
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Sci-Fi",
-
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-
-                            MaterialPageRoute(
-                              builder: (context) => GenreMoviesPage(
-                                title: "Sci-Fi",
-                                genreId: 878,
-                              ),
-                            ),
-                          );
-                        },
-
-                        child: const Text(
-                          "See All",
-
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Row(
-                    children: [
-                      // LEFT
-                      GestureDetector(
-                        onTap: () {
-                          sciFiController.animateTo(
-                            sciFiController.offset - 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      // RIGHT
-                      GestureDetector(
-                        onTap: () {
-                          sciFiController.animateTo(
-                            sciFiController.offset + 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 320,
-
-                child: FutureBuilder(
-                  future: ApiService.getMoviesByGenre(878),
-
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const MovieShimmer();
-                    }
-
-                    final movies = snapshot.data!;
-
-                    return ListView.builder(
-                      controller: sciFiController,
-
-                      scrollDirection: Axis.horizontal,
-
-                      itemCount: movies.length,
-
-                      itemBuilder: (context, index) {
-                        final movie = movies[index];
-
-                        return MovieCard(movie: movie);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // ================= ANIME =================
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Anime",
-
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  GenreMoviesPage(title: "Anime", genreId: 16),
-                            ),
-                          );
-                        },
-
-                        child: const Text(
-                          "See All",
-
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Row(
-                    children: [
-                      // LEFT
-                      GestureDetector(
-                        onTap: () {
-                          animeController.animateTo(
-                            animeController.offset - 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      // RIGHT
-                      GestureDetector(
-                        onTap: () {
-                          animeController.animateTo(
-                            animeController.offset + 200,
-
-                            duration: const Duration(milliseconds: 400),
-
-                            curve: Curves.easeInOut,
-                          );
-                        },
-
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827),
-
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-
-                          child: const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 320,
-
-                child: FutureBuilder(
-                  future: ApiService.getMoviesByGenre(16),
-
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const MovieShimmer();
-                    }
-
-                    final movies = snapshot.data!;
-
-                    return ListView.builder(
-                      controller: animeController,
-
-                      scrollDirection: Axis.horizontal,
-
-                      itemCount: movies.length,
-
-                      itemBuilder: (context, index) {
-                        final movie = movies[index];
-
-                        return MovieCard(movie: movie);
-                      },
-                    );
-                  },
                 ),
               ),
             ],
           ),
-        ),
+          SliverToBoxAdapter(child: _Billboard(future: trending)),
+          SliverToBoxAdapter(
+            child: _MovieSection(
+              title: 'Trending Now',
+              future: trending,
+              ranked: true,
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: _MovieSection(title: 'Popular on Netube', future: popular),
+          ),
+          SliverToBoxAdapter(
+            child: _MovieSection(title: 'Action', future: action),
+          ),
+          SliverToBoxAdapter(
+            child: _MovieSection(title: 'Sci-Fi Worlds', future: sciFi),
+          ),
+          SliverToBoxAdapter(
+            child: _MovieSection(
+              title: 'Recommended For You',
+              future: animation,
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        ],
       ),
-
-      bottomNavigationBar: const BottomNavbar(),
     );
   }
+}
+
+class _Billboard extends StatelessWidget {
+  final Future<List<dynamic>> future;
+  const _Billboard({required this.future});
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<dynamic>>(
+    future: future,
+    builder: (context, snapshot) {
+      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        return const AspectRatio(
+          aspectRatio: 1.05,
+          child: ColoredBox(color: NetubeColors.surface),
+        );
+      }
+      final movie = snapshot.data!.first as Map;
+      final backdrop = movie['backdrop_path'];
+      return AspectRatio(
+        aspectRatio: 1.05,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (backdrop != null)
+              Image.network(
+                'https://image.tmdb.org/t/p/w1280$backdrop',
+                fit: BoxFit.cover,
+              ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Color(0x55050505),
+                    NetubeColors.background,
+                  ],
+                  stops: [0, .52, 1],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 22,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    movie['title'] ?? 'Featured',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 34,
+                      height: 1,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${(movie['release_date'] ?? '').toString().split('-').first}  •  ★ ${(movie['vote_average'] as num?)?.toStringAsFixed(1) ?? '—'}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    movie['overview'] ?? '',
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: NetubeColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MovieDetailPage(movie: movie),
+                            ),
+                          ),
+                          icon: const Icon(Icons.play_arrow_rounded),
+                          label: const Text('Play'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          onPressed: () async {
+                            await WatchLaterService.addMovie(movie);
+                            if (context.mounted)
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Added to Watch Later'),
+                                ),
+                              );
+                          },
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('My List'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _MovieSection extends StatelessWidget {
+  final String title;
+  final Future<List<dynamic>> future;
+  final bool ranked;
+  const _MovieSection({
+    required this.title,
+    required this.future,
+    this.ranked = false,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 248,
+          child: FutureBuilder<List<dynamic>>(
+            future: future,
+            builder: (context, snapshot) {
+              if (snapshot.hasError)
+                return const Center(child: Text('Unable to load movies'));
+              if (!snapshot.hasData)
+                return const Center(child: CircularProgressIndicator());
+              return ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                scrollDirection: Axis.horizontal,
+                itemCount: snapshot.data!.take(10).length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (_, index) => MovieCard(
+                  movie: snapshot.data![index] as Map,
+                  rank: ranked ? index + 1 : null,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    ),
+  );
 }

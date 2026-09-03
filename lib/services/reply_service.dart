@@ -120,4 +120,42 @@ class ReplyService {
         .orderBy("createdAt")
         .snapshots();
   }
+
+  // ==========================
+  // DELETE NESTED REPLY
+  // ==========================
+  static Future<void> deleteNestedReply({
+    required int movieId,
+    required String reviewOwnerUid,
+    required String parentReplyId,
+    required String nestedReplyId,
+  }) async {
+    final user = auth.currentUser;
+
+    if (user == null) return;
+
+    final nestedReplyRef = firestore
+        .collection("movieReviews")
+        .doc(movieId.toString())
+        .collection("users")
+        .doc(reviewOwnerUid)
+        .collection("replies")
+        .doc(parentReplyId)
+        .collection("replies")
+        .doc(nestedReplyId);
+
+    final snapshot = await nestedReplyRef.get();
+
+    if (!snapshot.exists) return;
+
+    final data = snapshot.data() as Map<String, dynamic>;
+
+    // Hanya pemilik nested reply
+    // yang boleh menghapus
+    if (data["uid"] != user.uid) {
+      return;
+    }
+
+    await nestedReplyRef.delete();
+  }
 }

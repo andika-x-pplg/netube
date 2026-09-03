@@ -1,180 +1,132 @@
 import 'package:flutter/material.dart';
 import '../pages/movie_detail_page.dart';
+import '../theme/netube_theme.dart';
 
 class MovieCard extends StatelessWidget {
   final Map movie;
+  final int? rank;
+  final double width;
 
   const MovieCard({
     super.key,
     required this.movie,
+    this.rank,
+    this.width = 148,
   });
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl =
-        "https://image.tmdb.org/t/p/w500${movie['poster_path']}";
+    final poster = movie['poster_path'];
+    final imageUrl = poster is String && poster.isNotEmpty
+        ? 'https://image.tmdb.org/t/p/w500$poster'
+        : movie['image'] as String?;
+    final rating = movie['vote_average'];
+    final heroTag = movie['id']?.toString() ?? movie['title'].toString();
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
+    return SizedBox(
+      width: rank == null ? width : width + 42,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder:
-                (_, animation, __) =>
-                    MovieDetailPage(movie: movie),
-
-            transitionsBuilder:
-                (_, animation, __, child) {
-              return FadeTransition(
-                opacity: animation,
-
-                child: ScaleTransition(
-                  scale: Tween<double>(
-                    begin: 0.95,
-                    end: 1.0,
-                  ).animate(animation),
-
-                  child: child,
-                ),
-              );
-            },
-
-            transitionDuration:
-                const Duration(milliseconds: 400),
+            transitionDuration: const Duration(milliseconds: 300),
+            pageBuilder: (_, animation, __) => FadeTransition(
+              opacity: animation,
+              child: MovieDetailPage(movie: movie),
+            ),
           ),
-        );
-      },
-
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-
-        width: 170,
-        margin: const EdgeInsets.only(right: 18),
-
+        ),
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // MOVIE IMAGE
-            Hero(
-              tag: movie['id'].toString(),
-
-              child: Container(
-                height: 230,
-
-                decoration: BoxDecoration(
-                  borderRadius:
-                      BorderRadius.circular(24),
-
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                          Colors.black.withOpacity(0.4),
-
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
+            Expanded(
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    left: rank == null ? 0 : 38,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Hero(
+                      tag: heroTag,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: imageUrl == null
+                            ? const _PosterFallback()
+                            : Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const _PosterFallback(),
+                              ),
+                      ),
                     ),
-                  ],
+                  ),
+                  if (rank != null)
+                    Positioned(
+                      left: 0,
+                      bottom: -12,
+                      child: Text(
+                        '$rank',
+                        style: TextStyle(
+                          fontSize: 88,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                          foreground: Paint()
+                            ..style = PaintingStyle.stroke
+                            ..strokeWidth = 2
+                            ..color = Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: EdgeInsets.only(left: rank == null ? 0 : 38),
+              child: Text(
+                movie['title'] ?? 'Untitled',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
-
-                child: ClipRRect(
-                  borderRadius:
-                      BorderRadius.circular(24),
-
-                  child: Image.network(
-                    imageUrl,
-
-                    fit: BoxFit.cover,
-
-                    loadingBuilder: (
-                      context,
-                      child,
-                      loadingProgress,
-                    ) {
-                      if (loadingProgress == null) {
-                        return child;
-                      }
-
-                      return Container(
-                        color: const Color(
-                          0xFF111827,
-                        ),
-
-                        child: const Center(
-                          child:
-                              CircularProgressIndicator(),
-                        ),
-                      );
-                    },
-
-                    errorBuilder: (
-                      context,
-                      error,
-                      stackTrace,
-                    ) {
-                      return Container(
-                        color:
-                            const Color(0xFF111827),
-
-                        child: const Center(
-                          child: Icon(
-                            Icons.movie,
-                            color: Colors.white54,
-                            size: 50,
-                          ),
-                        ),
-                      );
-                    },
+              ),
+            ),
+            if (rating is num || movie['genre'] != null)
+              Padding(
+                padding: EdgeInsets.only(left: rank == null ? 0 : 38, top: 3),
+                child: Text(
+                  rating is num
+                      ? '★ ${rating.toStringAsFixed(1)}'
+                      : '${movie['genre']}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: NetubeColors.textSecondary,
                   ),
                 ),
               ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // TITLE
-            Text(
-              movie['title'] ??
-                  "No Title",
-
-              maxLines: 1,
-
-              overflow:
-                  TextOverflow.ellipsis,
-
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight:
-                    FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 4),
-
-            // OVERVIEW
-            Text(
-              movie['overview'] ??
-                  "No Description",
-
-              maxLines: 2,
-
-              overflow:
-                  TextOverflow.ellipsis,
-
-              style: TextStyle(
-                color:
-                    Colors.grey.shade400,
-
-                fontSize: 14,
-                height: 1.4,
-              ),
-            ),
           ],
         ),
       ),
     );
   }
+}
+
+class _PosterFallback extends StatelessWidget {
+  const _PosterFallback();
+  @override
+  Widget build(BuildContext context) => const ColoredBox(
+    color: NetubeColors.surfaceHigh,
+    child: Center(
+      child: Icon(Icons.movie_outlined, color: Colors.white38, size: 42),
+    ),
+  );
 }

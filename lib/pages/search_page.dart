@@ -1,115 +1,130 @@
 import 'package:flutter/material.dart';
-
 import '../services/api_service.dart';
+import '../theme/netube_theme.dart';
 import '../widgets/movie_card.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
-
   @override
   State<SearchPage> createState() => _SearchPageState();
 }
 
 class _SearchPageState extends State<SearchPage> {
-  final TextEditingController searchController = TextEditingController();
-
+  final searchController = TextEditingController();
   List movies = [];
-
   bool isLoading = false;
+  String? error;
 
-  // SEARCH FUNCTION
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> searchMovie() async {
+    if (searchController.text.trim().isEmpty) return;
+    FocusScope.of(context).unfocus();
     setState(() {
       isLoading = true;
+      error = null;
     });
-
-    final result = await ApiService.searchMovies(searchController.text);
-
-    setState(() {
-      movies = result;
-      isLoading = false;
-    });
+    try {
+      final result = await ApiService.searchMovies(
+        searchController.text.trim(),
+      );
+      if (mounted) setState(() => movies = result);
+    } catch (_) {
+      if (mounted) setState(() => error = 'Could not load search results.');
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF050B18),
-
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF050B18),
-
-        title: const Text(
-          "Search Movies",
-
-          style: TextStyle(color: Colors.white),
-        ),
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text(
+        'Search',
+        style: TextStyle(fontWeight: FontWeight.w800),
       ),
-
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-
-        child: Column(
-          children: [
-            // SEARCH BAR
-            TextField(
+    ),
+    body: SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            child: TextField(
               controller: searchController,
-
-              style: const TextStyle(color: Colors.white),
-
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => searchMovie(),
               decoration: InputDecoration(
-                hintText: "Search movie...",
-
-                hintStyle: const TextStyle(color: Colors.grey),
-
-                filled: true,
-
-                fillColor: Colors.white10,
-
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-
-                  borderSide: BorderSide.none,
-                ),
-
-                suffixIcon: IconButton(
-                  onPressed: searchMovie,
-
-                  icon: const Icon(Icons.search, color: Colors.orange),
-                ),
+                hintText: 'Movies, titles, genres...',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: () {
+                          searchController.clear();
+                          setState(() => movies = []);
+                        },
+                        icon: const Icon(Icons.close_rounded),
+                      ),
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // LOADING
-            if (isLoading)
-              const Expanded(child: Center(child: CircularProgressIndicator()))
-            // MOVIES
-            else
-              Expanded(
-                child: GridView.builder(
-                  itemCount: movies.length,
-
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-
-                    childAspectRatio: 0.58,
+          ),
+          if (isLoading) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: error != null
+                ? Center(
+                    child: Text(
+                      error!,
+                      style: const TextStyle(color: NetubeColors.textSecondary),
+                    ),
+                  )
+                : movies.isEmpty
+                ? const _SearchEmpty()
+                : GridView.builder(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    itemCount: movies.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 20,
+                          childAspectRatio: .57,
+                        ),
+                    itemBuilder: (_, index) => MovieCard(movie: movies[index]),
                   ),
-
-                  itemBuilder: (context, index) {
-                    final movie = movies[index];
-
-                    return MovieCard(movie: movie);
-                  },
-                ),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+class _SearchEmpty extends StatelessWidget {
+  const _SearchEmpty();
+  @override
+  Widget build(BuildContext context) => const Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.movie_filter_outlined, size: 48, color: Colors.white24),
+        SizedBox(height: 12),
+        Text(
+          'Find your next story',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        SizedBox(height: 5),
+        Text(
+          'Search the Netube movie catalog',
+          style: TextStyle(color: NetubeColors.textSecondary),
+        ),
+      ],
+    ),
+  );
 }

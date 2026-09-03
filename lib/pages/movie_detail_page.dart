@@ -12,6 +12,8 @@ import '../services/review_like_service.dart';
 import '../services/reply_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/reply_like_service.dart';
+import '../services/nested_reply_like_service.dart';
+import '../theme/netube_theme.dart';
 
 class MovieDetailPage extends StatefulWidget {
   final Map movie;
@@ -55,6 +57,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   @override
   void dispose() {
     reviewController.dispose();
+    replyController.dispose();
     super.dispose();
   }
 
@@ -155,11 +158,14 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl =
-        "https://image.tmdb.org/t/p/w500${widget.movie['poster_path']}";
+    final backdropPath = widget.movie['backdrop_path'];
+    final posterPath = widget.movie['poster_path'];
+    final imageUrl = backdropPath != null
+        ? "https://image.tmdb.org/t/p/w1280$backdropPath"
+        : "https://image.tmdb.org/t/p/w780$posterPath";
 
     return Scaffold(
-      backgroundColor: const Color(0xFF050B18),
+      backgroundColor: NetubeColors.background,
 
       body: CustomScrollView(
         slivers: [
@@ -167,17 +173,17 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           // NETFLIX HEADER
           // =====================
           SliverAppBar(
-            expandedHeight: 500,
+            expandedHeight: 460,
 
             pinned: true,
 
-            backgroundColor: const Color(0xFF050B18),
+            backgroundColor: NetubeColors.background,
 
             leading: Container(
               margin: const EdgeInsets.all(8),
 
               decoration: BoxDecoration(
-                color: Colors.black54,
+                color: Colors.black.withValues(alpha: .65),
                 borderRadius: BorderRadius.circular(50),
               ),
 
@@ -198,7 +204,14 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                   Hero(
                     tag: widget.movie['id'].toString(),
 
-                    child: Image.network(imageUrl, fit: BoxFit.cover),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const ColoredBox(
+                        color: NetubeColors.surface,
+                        child: Icon(Icons.movie_outlined, size: 64),
+                      ),
+                    ),
                   ),
 
                   Container(
@@ -208,7 +221,12 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
 
                         end: Alignment.bottomCenter,
 
-                        colors: [Colors.transparent, Color(0xFF050B18)],
+                        colors: [
+                          Color(0x22000000),
+                          Color(0x88000000),
+                          NetubeColors.background,
+                        ],
+                        stops: [0, .62, 1],
                       ),
                     ),
                   ),
@@ -234,8 +252,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
 
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 34,
+                      height: 1.05,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
 
@@ -243,7 +262,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
 
                   // DATE
                   Text(
-                    widget.movie['release_date'] ?? "Unknown Date",
+                    (widget.movie['release_date'] ?? "Unknown Date")
+                        .toString()
+                        .split('-')
+                        .first,
 
                     style: TextStyle(color: Colors.grey.shade400, fontSize: 16),
                   ),
@@ -258,8 +280,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                     ),
 
                     decoration: BoxDecoration(
-                      color: Colors.amber.shade700,
-                      borderRadius: BorderRadius.circular(12),
+                      color: NetubeColors.surfaceHigh,
+                      borderRadius: BorderRadius.circular(8),
                     ),
 
                     child: Row(
@@ -271,7 +293,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                         const SizedBox(width: 6),
 
                         Text(
-                          "${widget.movie['vote_average'].toStringAsFixed(1)} IMDb",
+                          "${(widget.movie['vote_average'] as num?)?.toStringAsFixed(1) ?? '—'} TMDB",
 
                           style: const TextStyle(
                             color: Colors.white,
@@ -854,7 +876,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
 
                                               (i) => const Icon(
                                                 Icons.star,
-                                                color: Colors.amber,
+                                                color: Color(0xFFFFC107),
                                                 size: 18,
                                               ),
                                             ),
@@ -1277,110 +1299,506 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                                                   replyDoc.data()
                                                       as Map<String, dynamic>;
 
-                                              return Container(
-                                                margin: const EdgeInsets.only(
-                                                  left: 35,
-                                                  top: 8,
-                                                ),
+                                              return GestureDetector(
+                                                onLongPress: () {
+                                                  print(
+                                                    "Nested reply ditekan lama",
+                                                  );
+                                                },
 
-                                                padding: const EdgeInsets.all(
-                                                  12,
-                                                ),
-
-                                                decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFF0B1220,
+                                                child: Container(
+                                                  margin: const EdgeInsets.only(
+                                                    left: 35,
+                                                    top: 8,
                                                   ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(14),
-                                                ),
 
-                                                child: Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
+                                                  padding: const EdgeInsets.all(
+                                                    12,
+                                                  ),
 
-                                                  children: [
-                                                    CircleAvatar(
-                                                      radius: 16,
-                                                      backgroundColor:
-                                                          Colors.red,
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFF0B1220,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          14,
+                                                        ),
+                                                  ),
 
-                                                      child: Text(
-                                                        (reply["username"] ??
-                                                                "U")
-                                                            .toString()
-                                                            .substring(0, 1)
-                                                            .toUpperCase(),
+                                                  child: Row(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
 
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.bold,
+                                                    children: [
+                                                      CircleAvatar(
+                                                        radius: 16,
+                                                        backgroundColor:
+                                                            Colors.red,
+
+                                                        child: Text(
+                                                          (reply["username"] ??
+                                                                  "U")
+                                                              .toString()
+                                                              .substring(0, 1)
+                                                              .toUpperCase(),
+
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
                                                         ),
                                                       ),
-                                                    ),
 
-                                                    const SizedBox(width: 10),
+                                                      const SizedBox(width: 10),
 
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Row(
-                                                            children: [
-                                                              Expanded(
-                                                                child: Text(
-                                                                  reply["username"] ??
-                                                                      "User",
-                                                                  style: const TextStyle(
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          children: [
+                                                            Row(
+                                                              children: [
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    reply["username"] ??
+                                                                        "User",
+                                                                    style: const TextStyle(
+                                                                      color: Colors
+                                                                          .white,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      fontSize:
+                                                                          13,
+                                                                    ),
+                                                                  ),
+                                                                ),
+
+                                                                // ==========================
+                                                                // DELETE REPLY
+                                                                // ==========================
+                                                                if (reply["uid"] ==
+                                                                    FirebaseAuth
+                                                                        .instance
+                                                                        .currentUser
+                                                                        ?.uid)
+                                                                  IconButton(
+                                                                    padding:
+                                                                        EdgeInsets
+                                                                            .zero,
+                                                                    constraints:
+                                                                        const BoxConstraints(),
+                                                                    icon: const Icon(
+                                                                      Icons
+                                                                          .delete_outline,
+                                                                      color: Colors
+                                                                          .red,
+                                                                      size: 18,
+                                                                    ),
+
+                                                                    onPressed: () async {
+                                                                      final confirm = await showDialog<bool>(
+                                                                        context:
+                                                                            context,
+                                                                        builder:
+                                                                            (
+                                                                              context,
+                                                                            ) {
+                                                                              return AlertDialog(
+                                                                                title: const Text(
+                                                                                  "Delete Reply",
+                                                                                ),
+
+                                                                                content: const Text(
+                                                                                  "Are you sure you want to delete this reply?",
+                                                                                ),
+
+                                                                                actions: [
+                                                                                  TextButton(
+                                                                                    onPressed: () {
+                                                                                      Navigator.pop(
+                                                                                        context,
+                                                                                        false,
+                                                                                      );
+                                                                                    },
+
+                                                                                    child: const Text(
+                                                                                      "Cancel",
+                                                                                    ),
+                                                                                  ),
+
+                                                                                  ElevatedButton(
+                                                                                    style: ElevatedButton.styleFrom(
+                                                                                      backgroundColor: Colors.red,
+                                                                                    ),
+
+                                                                                    onPressed: () {
+                                                                                      Navigator.pop(
+                                                                                        context,
+                                                                                        true,
+                                                                                      );
+                                                                                    },
+
+                                                                                    child: const Text(
+                                                                                      "Delete",
+                                                                                    ),
+                                                                                  ),
+                                                                                ],
+                                                                              );
+                                                                            },
+                                                                      );
+
+                                                                      if (confirm !=
+                                                                          true)
+                                                                        return;
+
+                                                                      await ReplyService.deleteReply(
+                                                                        movieId:
+                                                                            widget.movie["id"],
+                                                                        reviewOwnerUid:
+                                                                            reviewOwnerUid,
+                                                                        replyId:
+                                                                            replyDoc.id,
+                                                                      );
+                                                                    },
+                                                                  ),
+                                                              ],
+                                                            ),
+
+                                                            const SizedBox(
+                                                              height: 4,
+                                                            ),
+
+                                                            Text(
+                                                              reply["reply"] ??
+                                                                  "",
+                                                              style:
+                                                                  const TextStyle(
                                                                     color: Colors
-                                                                        .white,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
+                                                                        .white70,
+                                                                    height: 1.4,
                                                                     fontSize:
                                                                         13,
                                                                   ),
-                                                                ),
+                                                            ),
+
+                                                            const SizedBox(
+                                                              height: 8,
+                                                            ),
+
+                                                            const SizedBox(
+                                                              height: 6,
+                                                            ),
+
+                                                            // ==========================
+                                                            // NESTED REPLIES
+                                                            // ==========================
+                                                            StreamBuilder<
+                                                              QuerySnapshot
+                                                            >(
+                                                              stream: ReplyService.getNestedReplies(
+                                                                movieId: widget
+                                                                    .movie["id"],
+                                                                reviewOwnerUid:
+                                                                    reviewOwnerUid,
+                                                                parentReplyId:
+                                                                    replyDoc.id,
                                                               ),
 
-                                                              // ==========================
-                                                              // DELETE REPLY
-                                                              // ==========================
-                                                              if (reply["uid"] ==
-                                                                  FirebaseAuth
-                                                                      .instance
-                                                                      .currentUser
-                                                                      ?.uid)
-                                                                IconButton(
-                                                                  padding:
-                                                                      EdgeInsets
-                                                                          .zero,
-                                                                  constraints:
-                                                                      const BoxConstraints(),
-                                                                  icon: const Icon(
-                                                                    Icons
-                                                                        .delete_outline,
-                                                                    color: Colors
-                                                                        .red,
-                                                                    size: 18,
-                                                                  ),
+                                                              builder:
+                                                                  (
+                                                                    context,
+                                                                    nestedSnapshot,
+                                                                  ) {
+                                                                    if (nestedSnapshot
+                                                                        .hasError) {
+                                                                      return const SizedBox.shrink();
+                                                                    }
 
-                                                                  onPressed: () async {
-                                                                    final confirm = await showDialog<bool>(
+                                                                    if (!nestedSnapshot
+                                                                            .hasData ||
+                                                                        nestedSnapshot
+                                                                            .data!
+                                                                            .docs
+                                                                            .isEmpty) {
+                                                                      return const SizedBox.shrink();
+                                                                    }
+
+                                                                    final nestedReplies =
+                                                                        nestedSnapshot
+                                                                            .data!
+                                                                            .docs;
+
+                                                                    return Column(
+                                                                      children: nestedReplies.map((
+                                                                        nestedDoc,
+                                                                      ) {
+                                                                        final nested =
+                                                                            nestedDoc.data()
+                                                                                as Map<
+                                                                                  String,
+                                                                                  dynamic
+                                                                                >;
+
+                                                                        return GestureDetector(
+                                                                          onLongPress: () async {
+                                                                            final currentUserUid =
+                                                                                FirebaseAuth.instance.currentUser?.uid;
+
+                                                                            final nestedReplyOwnerUid =
+                                                                                nested["uid"]?.toString();
+
+                                                                            // Bukan milik sendiri → jangan tampilkan dialog
+                                                                            if (currentUserUid !=
+                                                                                nestedReplyOwnerUid) {
+                                                                              return;
+                                                                            }
+
+                                                                            final confirm =
+                                                                                await showDialog<
+                                                                                  bool
+                                                                                >(
+                                                                                  context: context,
+                                                                                  builder:
+                                                                                      (
+                                                                                        context,
+                                                                                      ) {
+                                                                                        return AlertDialog(
+                                                                                          backgroundColor: const Color(
+                                                                                            0xFF111827,
+                                                                                          ),
+
+                                                                                          title: const Text(
+                                                                                            "Hapus balasan?",
+                                                                                            style: TextStyle(
+                                                                                              color: Colors.white,
+                                                                                              fontWeight: FontWeight.bold,
+                                                                                            ),
+                                                                                          ),
+
+                                                                                          content: const Text(
+                                                                                            "Apakah kamu yakin ingin menghapus balasan ini?",
+                                                                                            style: TextStyle(
+                                                                                              color: Colors.white70,
+                                                                                            ),
+                                                                                          ),
+
+                                                                                          actions: [
+                                                                                            TextButton(
+                                                                                              onPressed: () {
+                                                                                                Navigator.pop(
+                                                                                                  context,
+                                                                                                  false,
+                                                                                                );
+                                                                                              },
+                                                                                              child: const Text(
+                                                                                                "Batal",
+                                                                                                style: TextStyle(
+                                                                                                  color: Colors.grey,
+                                                                                                ),
+                                                                                              ),
+                                                                                            ),
+
+                                                                                            ElevatedButton(
+                                                                                              style: ElevatedButton.styleFrom(
+                                                                                                backgroundColor: Colors.red,
+                                                                                              ),
+                                                                                              onPressed: () {
+                                                                                                Navigator.pop(
+                                                                                                  context,
+                                                                                                  true,
+                                                                                                );
+                                                                                              },
+                                                                                              child: const Text(
+                                                                                                "Hapus",
+                                                                                                style: TextStyle(
+                                                                                                  color: Colors.white,
+                                                                                                ),
+                                                                                              ),
+                                                                                            ),
+                                                                                          ],
+                                                                                        );
+                                                                                      },
+                                                                                );
+
+                                                                            // Untuk Step D, belum benar-benar dihapus dulu
+                                                                            if (confirm ==
+                                                                                true) {
+                                                                              await ReplyService.deleteNestedReply(
+                                                                                movieId: widget.movie["id"],
+                                                                                reviewOwnerUid: reviewOwnerUid,
+                                                                                parentReplyId: replyDoc.id,
+                                                                                nestedReplyId: nestedDoc.id,
+                                                                              );
+                                                                            }
+                                                                          },
+
+                                                                          child: Container(
+                                                                            margin: const EdgeInsets.only(
+                                                                              left: 25,
+                                                                              top: 8,
+                                                                            ),
+                                                                            padding: const EdgeInsets.all(
+                                                                              10,
+                                                                            ),
+
+                                                                            decoration: BoxDecoration(
+                                                                              color: const Color(
+                                                                                0xFF080E1A,
+                                                                              ),
+                                                                              borderRadius: BorderRadius.circular(
+                                                                                12,
+                                                                              ),
+                                                                            ),
+
+                                                                            child: Row(
+                                                                              crossAxisAlignment: CrossAxisAlignment.start,
+
+                                                                              children: [
+                                                                                CircleAvatar(
+                                                                                  radius: 14,
+                                                                                  backgroundColor: Colors.blueGrey,
+
+                                                                                  child: Text(
+                                                                                    (nested["username"] ??
+                                                                                            "U")
+                                                                                        .toString()
+                                                                                        .substring(
+                                                                                          0,
+                                                                                          1,
+                                                                                        )
+                                                                                        .toUpperCase(),
+
+                                                                                    style: const TextStyle(
+                                                                                      color: Colors.white,
+                                                                                      fontSize: 11,
+                                                                                      fontWeight: FontWeight.bold,
+                                                                                    ),
+                                                                                  ),
+                                                                                ),
+
+                                                                                const SizedBox(
+                                                                                  width: 8,
+                                                                                ),
+
+                                                                                Expanded(
+                                                                                  child: Column(
+                                                                                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                                                                                    children: [
+                                                                                      Text(
+                                                                                        nested["username"] ??
+                                                                                            "User",
+
+                                                                                        style: const TextStyle(
+                                                                                          color: Colors.white,
+                                                                                          fontWeight: FontWeight.bold,
+                                                                                          fontSize: 12,
+                                                                                        ),
+                                                                                      ),
+
+                                                                                      const SizedBox(
+                                                                                        height: 3,
+                                                                                      ),
+
+                                                                                      Text(
+                                                                                        nested["reply"] ??
+                                                                                            "",
+
+                                                                                        style: const TextStyle(
+                                                                                          color: Colors.white70,
+                                                                                          fontSize: 12,
+                                                                                          height: 1.4,
+                                                                                        ),
+                                                                                      ),
+
+                                                                                      const SizedBox(
+                                                                                        height: 5,
+                                                                                      ),
+
+                                                                                      // ==========================
+                                                                                      // LIKE NESTED REPLY
+                                                                                      // ==========================
+                                                                                      NestedReplyLikeButton(
+                                                                                        movieId: widget.movie["id"],
+                                                                                        reviewOwnerUid: reviewOwnerUid,
+                                                                                        parentReplyId: replyDoc.id,
+                                                                                        nestedReplyId: nestedDoc.id,
+                                                                                      ),
+                                                                                    ],
+                                                                                  ),
+                                                                                ),
+                                                                              ],
+                                                                            ),
+                                                                          ),
+                                                                        );
+                                                                      }).toList(),
+                                                                    );
+                                                                  },
+                                                            ),
+
+                                                            // ==========================
+                                                            // JUMLAH LIKE REPLY
+                                                            // ==========================
+                                                            Row(
+                                                              children: [
+                                                                ReplyLikeButton(
+                                                                  movieId: widget
+                                                                      .movie["id"],
+                                                                  reviewOwnerUid:
+                                                                      reviewOwnerUid,
+                                                                  replyId:
+                                                                      replyDoc
+                                                                          .id,
+                                                                ),
+
+                                                                const SizedBox(
+                                                                  width: 12,
+                                                                ),
+
+                                                                TextButton.icon(
+                                                                  onPressed: () {
+                                                                    replyController
+                                                                        .clear();
+
+                                                                    showDialog(
                                                                       context:
                                                                           context,
                                                                       builder: (context) {
                                                                         return AlertDialog(
-                                                                          title: const Text(
-                                                                            "Delete Reply",
+                                                                          backgroundColor: const Color(
+                                                                            0xFF111827,
                                                                           ),
 
-                                                                          content: const Text(
-                                                                            "Are you sure you want to delete this reply?",
+                                                                          title: Text(
+                                                                            "Reply to ${reply["username"] ?? "User"}",
+                                                                            style: const TextStyle(
+                                                                              color: Colors.white,
+                                                                            ),
+                                                                          ),
+
+                                                                          content: TextField(
+                                                                            controller:
+                                                                                replyController,
+                                                                            maxLines:
+                                                                                3,
+                                                                            style: const TextStyle(
+                                                                              color: Colors.white,
+                                                                            ),
+                                                                            decoration: const InputDecoration(
+                                                                              hintText: "Write a reply...",
+                                                                              hintStyle: TextStyle(
+                                                                                color: Colors.grey,
+                                                                              ),
+                                                                            ),
                                                                           ),
 
                                                                           actions: [
@@ -1388,347 +1806,65 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                                                                               onPressed: () {
                                                                                 Navigator.pop(
                                                                                   context,
-                                                                                  false,
                                                                                 );
                                                                               },
-
                                                                               child: const Text(
                                                                                 "Cancel",
                                                                               ),
                                                                             ),
 
                                                                             ElevatedButton(
-                                                                              style: ElevatedButton.styleFrom(
-                                                                                backgroundColor: Colors.red,
-                                                                              ),
+                                                                              onPressed: () async {
+                                                                                final text = replyController.text.trim();
 
-                                                                              onPressed: () {
+                                                                                if (text.isEmpty) return;
+
+                                                                                await ReplyService.addNestedReply(
+                                                                                  movieId: widget.movie["id"],
+                                                                                  reviewOwnerUid: reviewOwnerUid,
+                                                                                  parentReplyId: replyDoc.id,
+                                                                                  reply: text,
+                                                                                );
+
+                                                                                if (!context.mounted) return;
+
                                                                                 Navigator.pop(
                                                                                   context,
-                                                                                  true,
                                                                                 );
                                                                               },
 
                                                                               child: const Text(
-                                                                                "Delete",
+                                                                                "Send",
                                                                               ),
                                                                             ),
                                                                           ],
                                                                         );
                                                                       },
                                                                     );
-
-                                                                    if (confirm !=
-                                                                        true)
-                                                                      return;
-
-                                                                    await ReplyService.deleteReply(
-                                                                      movieId:
-                                                                          widget
-                                                                              .movie["id"],
-                                                                      reviewOwnerUid:
-                                                                          reviewOwnerUid,
-                                                                      replyId:
-                                                                          replyDoc
-                                                                              .id,
-                                                                    );
                                                                   },
-                                                                ),
-                                                            ],
-                                                          ),
-
-                                                          const SizedBox(
-                                                            height: 4,
-                                                          ),
-
-                                                          Text(
-                                                            reply["reply"] ??
-                                                                "",
-                                                            style:
-                                                                const TextStyle(
-                                                                  color: Colors
-                                                                      .white70,
-                                                                  height: 1.4,
-                                                                  fontSize: 13,
-                                                                ),
-                                                          ),
-
-                                                          const SizedBox(
-                                                            height: 8,
-                                                          ),
-
-                                                          const SizedBox(
-                                                            height: 6,
-                                                          ),
-
-                                                          // ==========================
-                                                          // NESTED REPLIES
-                                                          // ==========================
-                                                          StreamBuilder<
-                                                            QuerySnapshot
-                                                          >(
-                                                            stream: ReplyService.getNestedReplies(
-                                                              movieId: widget
-                                                                  .movie["id"],
-                                                              reviewOwnerUid:
-                                                                  reviewOwnerUid,
-                                                              parentReplyId:
-                                                                  replyDoc.id,
-                                                            ),
-
-                                                            builder:
-                                                                (
-                                                                  context,
-                                                                  nestedSnapshot,
-                                                                ) {
-                                                                  if (nestedSnapshot
-                                                                      .hasError) {
-                                                                    return const SizedBox.shrink();
-                                                                  }
-
-                                                                  if (!nestedSnapshot
-                                                                          .hasData ||
-                                                                      nestedSnapshot
-                                                                          .data!
-                                                                          .docs
-                                                                          .isEmpty) {
-                                                                    return const SizedBox.shrink();
-                                                                  }
-
-                                                                  final nestedReplies =
-                                                                      nestedSnapshot
-                                                                          .data!
-                                                                          .docs;
-
-                                                                  return Column(
-                                                                    children: nestedReplies.map((
-                                                                      nestedDoc,
-                                                                    ) {
-                                                                      final nested =
-                                                                          nestedDoc.data()
-                                                                              as Map<
-                                                                                String,
-                                                                                dynamic
-                                                                              >;
-
-                                                                      return Container(
-                                                                        margin: const EdgeInsets.only(
-                                                                          left:
-                                                                              25,
-                                                                          top:
-                                                                              8,
-                                                                        ),
-
-                                                                        padding:
-                                                                            const EdgeInsets.all(
-                                                                              10,
-                                                                            ),
-
-                                                                        decoration: BoxDecoration(
-                                                                          color: const Color(
-                                                                            0xFF080E1A,
-                                                                          ),
-                                                                          borderRadius: BorderRadius.circular(
-                                                                            12,
-                                                                          ),
-                                                                        ),
-
-                                                                        child: Row(
-                                                                          crossAxisAlignment:
-                                                                              CrossAxisAlignment.start,
-
-                                                                          children: [
-                                                                            CircleAvatar(
-                                                                              radius: 14,
-                                                                              backgroundColor: Colors.blueGrey,
-
-                                                                              child: Text(
-                                                                                (nested["username"] ??
-                                                                                        "U")
-                                                                                    .toString()
-                                                                                    .substring(
-                                                                                      0,
-                                                                                      1,
-                                                                                    )
-                                                                                    .toUpperCase(),
-
-                                                                                style: const TextStyle(
-                                                                                  color: Colors.white,
-                                                                                  fontSize: 11,
-                                                                                  fontWeight: FontWeight.bold,
-                                                                                ),
-                                                                              ),
-                                                                            ),
-
-                                                                            const SizedBox(
-                                                                              width: 8,
-                                                                            ),
-
-                                                                            Expanded(
-                                                                              child: Column(
-                                                                                crossAxisAlignment: CrossAxisAlignment.start,
-
-                                                                                children: [
-                                                                                  Text(
-                                                                                    nested["username"] ??
-                                                                                        "User",
-
-                                                                                    style: const TextStyle(
-                                                                                      color: Colors.white,
-                                                                                      fontWeight: FontWeight.bold,
-                                                                                      fontSize: 12,
-                                                                                    ),
-                                                                                  ),
-
-                                                                                  const SizedBox(
-                                                                                    height: 3,
-                                                                                  ),
-
-                                                                                  Text(
-                                                                                    nested["reply"] ??
-                                                                                        "",
-
-                                                                                    style: const TextStyle(
-                                                                                      color: Colors.white70,
-                                                                                      fontSize: 12,
-                                                                                      height: 1.4,
-                                                                                    ),
-                                                                                  ),
-                                                                                ],
-                                                                              ),
-                                                                            ),
-                                                                          ],
-                                                                        ),
-                                                                      );
-                                                                    }).toList(),
-                                                                  );
-                                                                },
-                                                          ),
-
-                                                          // ==========================
-                                                          // JUMLAH LIKE REPLY
-                                                          // ==========================
-                                                          Row(
-                                                            children: [
-                                                              ReplyLikeButton(
-                                                                movieId: widget
-                                                                    .movie["id"],
-                                                                reviewOwnerUid:
-                                                                    reviewOwnerUid,
-                                                                replyId:
-                                                                    replyDoc.id,
-                                                              ),
-
-                                                              const SizedBox(
-                                                                width: 12,
-                                                              ),
-
-                                                              TextButton.icon(
-                                                                onPressed: () {
-                                                                  replyController
-                                                                      .clear();
-
-                                                                  showDialog(
-                                                                    context:
-                                                                        context,
-                                                                    builder: (context) {
-                                                                      return AlertDialog(
-                                                                        backgroundColor:
-                                                                            const Color(
-                                                                              0xFF111827,
-                                                                            ),
-
-                                                                        title: Text(
-                                                                          "Reply to ${reply["username"] ?? "User"}",
-                                                                          style: const TextStyle(
-                                                                            color:
-                                                                                Colors.white,
-                                                                          ),
-                                                                        ),
-
-                                                                        content: TextField(
-                                                                          controller:
-                                                                              replyController,
-                                                                          maxLines:
-                                                                              3,
-                                                                          style: const TextStyle(
-                                                                            color:
-                                                                                Colors.white,
-                                                                          ),
-                                                                          decoration: const InputDecoration(
-                                                                            hintText:
-                                                                                "Write a reply...",
-                                                                            hintStyle: TextStyle(
-                                                                              color: Colors.grey,
-                                                                            ),
-                                                                          ),
-                                                                        ),
-
-                                                                        actions: [
-                                                                          TextButton(
-                                                                            onPressed: () {
-                                                                              Navigator.pop(
-                                                                                context,
-                                                                              );
-                                                                            },
-                                                                            child: const Text(
-                                                                              "Cancel",
-                                                                            ),
-                                                                          ),
-
-                                                                          ElevatedButton(
-                                                                            onPressed: () async {
-                                                                              final text = replyController.text.trim();
-
-                                                                              if (text.isEmpty)
-                                                                                return;
-
-                                                                              await ReplyService.addNestedReply(
-                                                                                movieId: widget.movie["id"],
-                                                                                reviewOwnerUid: reviewOwnerUid,
-                                                                                parentReplyId: replyDoc.id,
-                                                                                reply: text,
-                                                                              );
-
-                                                                              if (!context.mounted)
-                                                                                return;
-
-                                                                              Navigator.pop(
-                                                                                context,
-                                                                              );
-                                                                            },
-
-                                                                            child: const Text(
-                                                                              "Send",
-                                                                            ),
-                                                                          ),
-                                                                        ],
-                                                                      );
-                                                                    },
-                                                                  );
-                                                                },
-                                                                icon: const Icon(
-                                                                  Icons.reply,
-                                                                  size: 17,
-                                                                  color: Colors
-                                                                      .blue,
-                                                                ),
-                                                                label: const Text(
-                                                                  "Reply",
-                                                                  style: TextStyle(
+                                                                  icon: const Icon(
+                                                                    Icons.reply,
+                                                                    size: 17,
                                                                     color: Colors
-                                                                        .white70,
-                                                                    fontSize:
-                                                                        12,
+                                                                        .blue,
+                                                                  ),
+                                                                  label: const Text(
+                                                                    "Reply",
+                                                                    style: TextStyle(
+                                                                      color: Colors
+                                                                          .white70,
+                                                                      fontSize:
+                                                                          12,
+                                                                    ),
                                                                   ),
                                                                 ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ],
+                                                              ],
+                                                            ),
+                                                          ],
+                                                        ),
                                                       ),
-                                                    ),
-                                                  ],
+                                                    ],
+                                                  ),
                                                 ),
                                               );
                                             }).toList(),
@@ -2036,6 +2172,151 @@ class _ReplyLikeButtonState extends State<ReplyLikeButton> {
                   "$totalLikes",
 
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ==========================
+// LIKE NESTED REPLY BUTTON
+// ==========================
+class NestedReplyLikeButton extends StatefulWidget {
+  final int movieId;
+  final String reviewOwnerUid;
+  final String parentReplyId;
+  final String nestedReplyId;
+
+  const NestedReplyLikeButton({
+    super.key,
+    required this.movieId,
+    required this.reviewOwnerUid,
+    required this.parentReplyId,
+    required this.nestedReplyId,
+  });
+
+  @override
+  State<NestedReplyLikeButton> createState() => _NestedReplyLikeButtonState();
+}
+
+class _NestedReplyLikeButtonState extends State<NestedReplyLikeButton> {
+  bool liked = false;
+  bool loading = true;
+  bool animating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLikeStatus();
+  }
+
+  Future<void> _loadLikeStatus() async {
+    final result = await NestedReplyLikeService.isLiked(
+      movieId: widget.movieId,
+      reviewOwnerUid: widget.reviewOwnerUid,
+      parentReplyId: widget.parentReplyId,
+      nestedReplyId: widget.nestedReplyId,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      liked = result;
+      loading = false;
+    });
+  }
+
+  Future<void> _toggleLike() async {
+    if (loading) return;
+
+    final newLiked = !liked;
+
+    setState(() {
+      liked = newLiked;
+      animating = true;
+    });
+
+    try {
+      if (newLiked) {
+        await NestedReplyLikeService.likeNestedReply(
+          movieId: widget.movieId,
+          reviewOwnerUid: widget.reviewOwnerUid,
+          parentReplyId: widget.parentReplyId,
+          nestedReplyId: widget.nestedReplyId,
+        );
+      } else {
+        await NestedReplyLikeService.unlikeNestedReply(
+          movieId: widget.movieId,
+          reviewOwnerUid: widget.reviewOwnerUid,
+          parentReplyId: widget.parentReplyId,
+          nestedReplyId: widget.nestedReplyId,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      // Kalau Firebase gagal, kembalikan status sebelumnya
+      setState(() {
+        liked = !newLiked;
+      });
+
+      await Future.delayed(const Duration(milliseconds: 220));
+
+      if (!mounted) return;
+
+      setState(() {
+        animating = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const SizedBox(width: 45, height: 25);
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: NestedReplyLikeService.getLikes(
+        movieId: widget.movieId,
+        reviewOwnerUid: widget.reviewOwnerUid,
+        parentReplyId: widget.parentReplyId,
+        nestedReplyId: widget.nestedReplyId,
+      ),
+
+      builder: (context, snapshot) {
+        final totalLikes = snapshot.data?.docs.length ?? 0;
+
+        return InkWell(
+          onTap: _toggleLike,
+          borderRadius: BorderRadius.circular(20),
+
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedScale(
+                  scale: animating ? 1.4 : 1.0,
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutBack,
+
+                  child: Icon(
+                    liked ? Icons.favorite : Icons.favorite_border,
+                    color: Colors.red,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 4),
+
+                Text(
+                  "$totalLikes",
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
                 ),
               ],
             ),

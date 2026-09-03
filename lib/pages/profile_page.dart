@@ -1,316 +1,201 @@
 import 'package:flutter/material.dart';
-
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../theme/netube_theme.dart';
+import 'about_policy_page.dart';
+import 'account_settings_page.dart';
+import 'downloads_page.dart';
+import 'feedback_page.dart';
+import 'help_support_page.dart';
+import 'history_page.dart';
 import 'login_page.dart';
-import 'subscriptions_page.dart';
-import 'watch_later_page.dart';
-
 import 'notifications_page.dart';
+import 'subscriptions_page.dart';
+import 'video_audio_page.dart';
+import 'watch_later_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
-
   @override
   Widget build(BuildContext context) {
+    final email = AuthService.auth.currentUser?.email ?? 'No email';
+    final username = email.split('@').first;
     return Scaffold(
-      backgroundColor: const Color(0xFF050B18),
-
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-
-        title: const Text("Profile", style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Profile',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
       ),
-
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-
-            // PROFILE IMAGE
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-
-                border: Border.all(color: Colors.redAccent, width: 3),
-              ),
-
-              child: const CircleAvatar(
-                radius: 60,
-                backgroundImage: NetworkImage("https://i.pravatar.cc/300"),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // USERNAME
-            Text(
-              (AuthService.auth.currentUser?.email ?? "User").split('@').first,
-
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // EMAIL
-            Text(
-              AuthService.auth.currentUser?.email ?? "No Email",
-
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 16),
-            ),
-
-            const SizedBox(height: 20),
-
-            // PREMIUM BADGE
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Colors.red, Colors.orange],
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: NetubeColors.accent,
                 ),
-
-                borderRadius: BorderRadius.circular(30),
+                child: const CircleAvatar(
+                  radius: 38,
+                  backgroundImage: NetworkImage('https://i.pravatar.cc/300'),
+                ),
               ),
-
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-
-                children: [
-                  Icon(Icons.workspace_premium, color: Colors.white),
-
-                  SizedBox(width: 8),
-
-                  Text(
-                    "Premium Member",
-
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      username,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 23,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            // STATS
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-
-              children: [
-                _buildStatItem("120", "Movies"),
-
-                _buildStatItem("87", "Favorites"),
-
-                _buildStatItem("24h", "Watch Time"),
-              ],
-            ),
-
-            const SizedBox(height: 40),
-
-            // MENU ITEMS
-            _buildMenuItem(Icons.person_outline, "Edit Profile"),
-
-            _buildMenuItem(
-              Icons.subscriptions,
-              "Subscriptions",
-
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SubscriptionsPage()),
-                );
-              },
-            ),
-
-            _buildMenuItem(
-              Icons.watch_later_outlined,
-              "Watch Later",
-
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const WatchLaterPage()),
-                );
-              },
-            ),
-
-            _buildMenuItem(Icons.lock_outline, "Privacy Settings"),
-
-            // ==========================
-            // NOTIFICATIONS + UNREAD BADGE
-            // ==========================
-            StreamBuilder<int>(
-              stream: NotificationService.getUnreadCount(),
-
-              builder: (context, snapshot) {
-                final unreadCount = snapshot.data ?? 0;
-
-                return _buildMenuItem(
-                  Icons.notifications_outlined,
-                  "Notifications",
-
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationsPage(),
-                      ),
-                    );
-                  },
-
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (unreadCount > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            unreadCount > 99 ? "99+" : unreadCount.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-
-                      if (unreadCount > 0) const SizedBox(width: 10),
-
-                      const Icon(
-                        Icons.arrow_forward_ios,
-                        color: Colors.grey,
-                        size: 16,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-
-            _buildMenuItem(Icons.help_outline, "Help Center"),
-
-            const SizedBox(height: 30),
-
-            // LOGOUT BUTTON
-            SizedBox(
-              width: double.infinity,
-              height: 58,
-
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-
-                onPressed: () async {
-                  await AuthService.logout();
-
-                  if (!context.mounted) return;
-
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginPage()),
-                    (route) => false,
-                  );
-                },
-
-                child: const Text(
-                  "Logout",
-
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                    const SizedBox(height: 3),
+                    Text(
+                      email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: NetubeColors.textSecondary),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String number, String label) {
-    return Column(
-      children: [
-        Text(
-          number,
-
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+            ],
           ),
-        ),
-
-        const SizedBox(height: 6),
-
-        Text(label, style: TextStyle(color: Colors.grey.shade400)),
-      ],
-    );
-  }
-
-  Widget _buildMenuItem(
-    IconData icon,
-    String title, {
-    VoidCallback? onTap,
-    Widget? trailing,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(18),
-
-        decoration: BoxDecoration(
-          color: const Color(0xFF111827),
-          borderRadius: BorderRadius.circular(20),
-        ),
-
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.redAccent),
-
-            const SizedBox(width: 16),
-
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
+          const SizedBox(height: 28),
+          _Menu(
+            icon: Icons.manage_accounts_outlined,
+            label: 'Account Settings',
+            page: const AccountSettingsPage(),
+          ),
+          StreamBuilder<int>(
+            stream: NotificationService.getUnreadCount(),
+            builder: (_, snapshot) => _Menu(
+              icon: Icons.notifications_none_rounded,
+              label: 'Notifications',
+              page: const NotificationsPage(),
+              badge: snapshot.data ?? 0,
             ),
-
-            trailing ??
-                const Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.grey,
-                  size: 16,
-                ),
-          ],
-        ),
+          ),
+          const _Menu(
+            icon: Icons.subscriptions_outlined,
+            label: 'Subscriptions',
+            page: SubscriptionsPage(),
+          ),
+          const _Menu(
+            icon: Icons.history_rounded,
+            label: 'Watch History',
+            page: WatchHistoryPage(),
+          ),
+          const _Menu(
+            icon: Icons.bookmark_border_rounded,
+            label: 'Watch Later',
+            page: WatchLaterPage(),
+          ),
+          const _Menu(
+            icon: Icons.download_outlined,
+            label: 'Downloads',
+            page: DownloadsPage(),
+          ),
+          const _Menu(
+            icon: Icons.graphic_eq_rounded,
+            label: 'Video & Audio',
+            page: VideoAudioPage(),
+          ),
+          const _Menu(
+            icon: Icons.support_agent_rounded,
+            label: 'Help & Support',
+            page: HelpSupportPage(),
+          ),
+          const _Menu(
+            icon: Icons.chat_bubble_outline_rounded,
+            label: 'Feedback',
+            page: FeedbackPage(),
+          ),
+          const _Menu(
+            icon: Icons.policy_outlined,
+            label: 'About & Policy',
+            page: AboutPolicyPage(),
+          ),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: NetubeColors.divider),
+              minimumSize: const Size.fromHeight(52),
+            ),
+            onPressed: () async {
+              await AuthService.logout();
+              if (!context.mounted) return;
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (_) => false,
+              );
+            },
+            icon: const Icon(Icons.logout_rounded),
+            label: const Text('Sign out'),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _Menu extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Widget page;
+  final int badge;
+  const _Menu({
+    required this.icon,
+    required this.label,
+    required this.page,
+    this.badge = 0,
+  });
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+    leading: Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: NetubeColors.surfaceHigh,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, size: 21),
+    ),
+    title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (badge > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: NetubeColors.accent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              badge > 99 ? '99+' : '$badge',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+          ),
+        const SizedBox(width: 8),
+        const Icon(
+          Icons.chevron_right_rounded,
+          color: NetubeColors.textSecondary,
+        ),
+      ],
+    ),
+    onTap: () =>
+        Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
+  );
 }

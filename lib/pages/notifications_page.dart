@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../services/notification_service.dart';
+import '../theme/netube_theme.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
@@ -9,10 +11,10 @@ class NotificationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050B18),
+      backgroundColor: NetubeColors.background,
 
       appBar: AppBar(
-        backgroundColor: const Color(0xFF050B18),
+        backgroundColor: NetubeColors.background,
         elevation: 0,
 
         title: const Text(
@@ -86,6 +88,10 @@ class NotificationsPage extends StatelessWidget {
                   notificationDoc.data() as Map<String, dynamic>;
 
               final isRead = notification["isRead"] ?? false;
+              final createdAt = notification["createdAt"];
+              final timestamp = createdAt is Timestamp
+                  ? timeago.format(createdAt.toDate())
+                  : "Just now";
 
               return InkWell(
                 borderRadius: BorderRadius.circular(16),
@@ -103,8 +109,8 @@ class NotificationsPage extends StatelessWidget {
 
                   decoration: BoxDecoration(
                     color: isRead
-                        ? const Color(0xFF111827)
-                        : const Color(0xFF172033),
+                        ? NetubeColors.surface
+                        : const Color(0xFF241416),
 
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -154,9 +160,9 @@ class NotificationsPage extends StatelessWidget {
 
                             const SizedBox(height: 5),
 
-                            const Text(
-                              "Baru saja",
-                              style: TextStyle(
+                            Text(
+                              timestamp,
+                              style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 12,
                               ),

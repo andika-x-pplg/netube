@@ -3,6 +3,7 @@ import 'register_page.dart';
 import 'home_page.dart';
 import '../services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../theme/netube_theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -55,7 +56,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050B18),
+      backgroundColor: NetubeColors.background,
 
       body: SafeArea(
         child: Padding(
@@ -77,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
 
                 child: const Text(
-                  "Netube",
+                  "NETUBE",
 
                   style: TextStyle(
                     fontSize: 42,
@@ -90,7 +91,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 14),
 
               Text(
-                "Welcome back 👋",
+                "Stories worth staying for.",
 
                 style: TextStyle(color: Colors.grey.shade400, fontSize: 18),
               ),
@@ -126,7 +127,7 @@ class _LoginPageState extends State<LoginPage> {
                     backgroundColor: Colors.redAccent,
 
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
 
@@ -236,10 +237,10 @@ class _LoginPageState extends State<LoginPage> {
         prefixIcon: Icon(icon, color: Colors.grey),
 
         filled: true,
-        fillColor: const Color(0xFF111827),
+        fillColor: NetubeColors.surfaceHigh,
 
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
 
           borderSide: BorderSide.none,
         ),

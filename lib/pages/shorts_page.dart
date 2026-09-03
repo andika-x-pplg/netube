@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import '../theme/netube_theme.dart';
 
 class ShortsPage extends StatefulWidget {
   const ShortsPage({super.key});
@@ -127,7 +128,7 @@ class _ShortVideoPlayerState extends State<ShortVideoPlayer> {
                     const SizedBox(height: 10),
 
                     Text(
-                      "🔥 Amazing Shorts",
+                      "Amazing Shorts",
 
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
@@ -140,6 +141,8 @@ class _ShortVideoPlayerState extends State<ShortVideoPlayer> {
               ),
             ],
           )
-        : const Center(child: CircularProgressIndicator(color: Colors.red));
+        : const Center(
+            child: CircularProgressIndicator(color: NetubeColors.accent),
+          );
   }
 }

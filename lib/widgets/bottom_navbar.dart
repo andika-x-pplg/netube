@@ -1,128 +1,70 @@
 import 'package:flutter/material.dart';
+import '../pages/home_page.dart';
+import '../pages/profile_page.dart';
 import '../pages/shorts_page.dart';
 import '../pages/upload_page.dart';
-import '../pages/profile_page.dart';
-import '../pages/youtube_page.dart'; // Sudah ter-import dengan aman
-import '../pages/home_page.dart';
+import '../pages/youtube_page.dart';
+import '../theme/netube_theme.dart';
 
 class BottomNavbar extends StatelessWidget {
-  const BottomNavbar({super.key});
+  final int currentIndex;
+  const BottomNavbar({super.key, this.currentIndex = -1});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 85,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0B1220),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          // HOME / YOUTUBE VIDEOS
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const HomePage()),
-              );
-            },
-            child: _buildNavItem(icon: Icons.home_outlined, label: "Home"),
-          ),
-
-          // SHORTS
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ShortsPage()),
-              );
-            },
-            child: _buildNavItem(
-              icon: Icons.play_circle_outline,
-              label: "Shorts",
-            ),
-          ),
-
-          // ADD BUTTON
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const UploadPage()),
-              );
-            },
-            child: Container(
-              width: 65,
-              height: 65,
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(color: Colors.red.withOpacity(0.4), blurRadius: 15),
-                ],
-              ),
-              child: const Icon(Icons.add, color: Colors.white, size: 35),
-            ),
-          ),
-
-          // YOUTUBE
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const YoutubeHomePage(),
-                ),
-              );
-            },
-            child: _buildNavItem(
-              icon: Icons.smart_display_outlined,
-              label: "YouTube",
-            ),
-          ),
-
-          // PROFILE
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()),
-              );
-            },
-            child: _buildNavItem(icon: Icons.person_outline, label: "Profile"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    bool isActive = false,
-  }) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: isActive ? Colors.redAccent : Colors.grey, size: 28),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.redAccent : Colors.grey,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
+    final items = <(IconData, String, Widget)>[
+      (Icons.home_rounded, 'Home', const HomePage()),
+      (Icons.explore_outlined, 'Explore', const YoutubeHomePage()),
+      (Icons.play_circle_outline_rounded, 'Shorts', const ShortsPage()),
+      (Icons.add_box_outlined, 'Upload', const UploadPage()),
+      (Icons.person_outline_rounded, 'Profile', const ProfilePage()),
+    ];
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 68,
+        decoration: const BoxDecoration(
+          color: Color(0xF2111111),
+          border: Border(top: BorderSide(color: NetubeColors.divider)),
         ),
-      ],
+        child: Row(
+          children: List.generate(items.length, (index) {
+            final active = currentIndex == index;
+            return Expanded(
+              child: InkWell(
+                onTap: active
+                    ? null
+                    : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => items[index].$3),
+                      ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      items[index].$1,
+                      size: 23,
+                      color: active
+                          ? NetubeColors.accent
+                          : NetubeColors.textSecondary,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      items[index].$2,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: active
+                            ? Colors.white
+                            : NetubeColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
     );
   }
 }
