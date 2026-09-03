@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/favorite_service.dart';
 import '../services/api_service.dart';
 import 'trailer_player_page.dart';
 import '../services/history_service.dart';
@@ -25,7 +24,6 @@ class MovieDetailPage extends StatefulWidget {
 }
 
 class _MovieDetailPageState extends State<MovieDetailPage> {
-  bool isFavorite = false;
   bool isWatchLater = false;
   double myRating = 0;
 
@@ -64,26 +62,40 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   @override
   void initState() {
     super.initState();
-    checkFavorite();
     checkWatchLater();
     loadRatings();
     loadMyReview();
   }
 
-  Future<void> checkFavorite() async {
-    final result = await FavoriteService.isFavorite(widget.movie['id']);
-
-    setState(() {
-      isFavorite = result;
-    });
-  }
-
   Future<void> checkWatchLater() async {
     final result = await WatchLaterService.isMovieSaved(widget.movie['id']);
-
+    if (!mounted) return;
     setState(() {
       isWatchLater = result;
     });
+  }
+
+  Future<void> toggleWatchLater() async {
+    if (isWatchLater) {
+      await WatchLaterService.removeMovie(widget.movie['id']);
+    } else {
+      await WatchLaterService.addMovie(widget.movie);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      isWatchLater = !isWatchLater;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isWatchLater
+              ? 'Movie added to Watch Later'
+              : 'Movie removed from Watch Later',
+        ),
+      ),
+    );
   }
 
   Future<void> loadRatings() async {
@@ -480,25 +492,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                       ),
                       const SizedBox(width: 12),
 
-                      // FAVORITE
+                      // MY LIST / WATCH LATER
                       GestureDetector(
-                        onTap: () async {
-                          if (isFavorite) {
-                            await FavoriteService.removeFavorite(
-                              widget.movie['id'],
-                            );
-
-                            setState(() {
-                              isFavorite = false;
-                            });
-                          } else {
-                            await FavoriteService.addFavorite(widget.movie);
-
-                            setState(() {
-                              isFavorite = true;
-                            });
-                          }
-                        },
+                        onTap: toggleWatchLater,
 
                         child: Container(
                           width: 55,
@@ -510,9 +506,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                           ),
 
                           child: Icon(
-                            isFavorite ? Icons.favorite : Icons.favorite_border,
-
-                            color: isFavorite ? Colors.red : Colors.white,
+                            isWatchLater
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: isWatchLater ? Colors.red : Colors.white,
                           ),
                         ),
                       ),
@@ -523,21 +520,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
 
                   // WATCH LATER
                   GestureDetector(
-                    onTap: () async {
-                      if (isWatchLater) {
-                        await WatchLaterService.removeMovie(widget.movie['id']);
-
-                        setState(() {
-                          isWatchLater = false;
-                        });
-                      } else {
-                        await WatchLaterService.addMovie(widget.movie);
-
-                        setState(() {
-                          isWatchLater = true;
-                        });
-                      }
-                    },
+                    onTap: toggleWatchLater,
 
                     child: Container(
                       width: 55,
