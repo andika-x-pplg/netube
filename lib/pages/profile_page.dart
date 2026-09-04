@@ -12,6 +12,7 @@ import 'login_page.dart';
 import 'notifications_page.dart';
 import 'subscriptions_page.dart';
 import 'video_audio_page.dart';
+import 'video_reactions_page.dart';
 import 'watch_later_page.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -98,6 +99,11 @@ class ProfilePage extends StatelessWidget {
             icon: Icons.bookmark_border_rounded,
             label: 'Watch Later',
             page: WatchLaterPage(),
+          ),
+          const _Menu(
+            icon: Icons.thumb_up_alt_outlined,
+            label: 'Aktivitas Video',
+            page: VideoReactionsPage(),
           ),
           const _Menu(
             icon: Icons.download_outlined,

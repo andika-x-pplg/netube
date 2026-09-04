@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../models/youtube_video_model.dart';
+import '../models/netube_content_model.dart';
+import '../services/netube_content_service.dart';
 import '../services/youtube_service.dart';
 import '../theme/netube_theme.dart';
 import '../widgets/netube_video_card.dart';
+import '../widgets/netube_content_card.dart';
+import 'netube_content_player_page.dart';
 import 'youtube_player_page.dart';
 
 class YoutubeSearchPage extends StatefulWidget {
@@ -17,6 +21,7 @@ class _YoutubeSearchPageState extends State<YoutubeSearchPage> {
   final YoutubeService _youtubeService = YoutubeService();
   final TextEditingController _searchController = TextEditingController();
   List<YoutubeVideo> _videos = [];
+  List<NetubeContent> _netubeContent = [];
   bool _isLoading = false;
   bool _hasSearched = false;
   bool _hasError = false;
@@ -38,10 +43,14 @@ class _YoutubeSearchPageState extends State<YoutubeSearchPage> {
     });
 
     try {
-      final results = await _youtubeService.fetchVideosByCategory(query);
+      final youtubeFuture = _youtubeService.fetchVideosByCategory(query);
+      final contentFuture = NetubeContentService.searchPublic(query);
+      final results = await youtubeFuture;
+      final contentResults = await contentFuture;
       if (!mounted) return;
       setState(() {
         _videos = results;
+        _netubeContent = contentResults;
         _isLoading = false;
       });
     } catch (e) {
@@ -114,6 +123,7 @@ class _YoutubeSearchPageState extends State<YoutubeSearchPage> {
                           _searchController.clear();
                           setState(() {
                             _videos = [];
+                            _netubeContent = [];
                             _hasSearched = false;
                           });
                         },
@@ -174,7 +184,7 @@ class _YoutubeSearchPageState extends State<YoutubeSearchPage> {
         subtitle: 'Search videos, music, creators, and live content.',
       );
     }
-    if (_videos.isEmpty) {
+    if (_videos.isEmpty && _netubeContent.isEmpty) {
       return const _SearchState(
         icon: Icons.search_off_rounded,
         title: 'No videos found',
@@ -184,10 +194,22 @@ class _YoutubeSearchPageState extends State<YoutubeSearchPage> {
     return ListView.separated(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
-      itemCount: _videos.length,
+      itemCount: _netubeContent.length + _videos.length,
       separatorBuilder: (_, _) => const SizedBox(height: 20),
       itemBuilder: (context, index) {
-        final video = _videos[index];
+        if (index < _netubeContent.length) {
+          final content = _netubeContent[index];
+          return NetubeContentCard(
+            content: content,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => NetubeContentPlayerPage(content: content),
+              ),
+            ),
+          );
+        }
+        final video = _videos[index - _netubeContent.length];
         return NetubeVideoCard(video: video, onTap: () => _openVideo(video));
       },
     );

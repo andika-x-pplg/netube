@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../models/youtube_video_model.dart';
+import '../models/netube_content_model.dart';
+import '../services/netube_content_service.dart';
 import '../services/youtube_service.dart';
 import '../theme/netube_theme.dart';
 import '../widgets/netube_video_card.dart';
+import '../widgets/netube_content_card.dart';
+import 'netube_content_player_page.dart';
 import 'youtube_player_page.dart';
 import 'youtube_search_page.dart';
 
@@ -24,6 +28,8 @@ class _YoutubeHomePageState extends State<YoutubeHomePage> {
     'Gaming',
     'Movies',
     'Anime',
+    'Netube Content',
+    'My Uploads',
   ];
 
   String _selectedCategory = 'Popular';
@@ -38,6 +44,14 @@ class _YoutubeHomePageState extends State<YoutubeHomePage> {
   }
 
   Future<void> _loadVideos() async {
+    if (_selectedCategory == 'Netube Content' ||
+        _selectedCategory == 'My Uploads') {
+      setState(() {
+        _isLoading = false;
+        _hasError = false;
+      });
+      return;
+    }
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -102,7 +116,10 @@ class _YoutubeHomePageState extends State<YoutubeHomePage> {
           slivers: [
             SliverToBoxAdapter(child: _buildHeader()),
             SliverToBoxAdapter(child: _buildCategories()),
-            if (_isLoading)
+            if (_selectedCategory == 'Netube Content' ||
+                _selectedCategory == 'My Uploads')
+              _buildNetubeContent()
+            else if (_isLoading)
               const SliverFillRemaining(child: _VideoLoading())
             else if (_hasError)
               SliverFillRemaining(
@@ -175,6 +192,62 @@ class _YoutubeHomePageState extends State<YoutubeHomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNetubeContent() {
+    final mine = _selectedCategory == 'My Uploads';
+    return StreamBuilder<List<NetubeContent>>(
+      stream: mine
+          ? NetubeContentService.myContent()
+          : NetubeContentService.publicContent(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const SliverFillRemaining(
+            child: _VideoState(
+              icon: Icons.cloud_off_rounded,
+              title: 'Unable to load Netube content',
+              subtitle: 'Check your connection and try again.',
+            ),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SliverFillRemaining(child: _VideoLoading());
+        }
+        final content = snapshot.data ?? const [];
+        if (content.isEmpty) {
+          return SliverFillRemaining(
+            child: _VideoState(
+              icon: mine
+                  ? Icons.video_call_outlined
+                  : Icons.video_library_outlined,
+              title: mine ? 'No uploads yet' : 'No Netube content yet',
+              subtitle: mine
+                  ? 'Your public, private, and archived uploads appear here.'
+                  : 'Public videos from Netube creators appear here.',
+            ),
+          );
+        }
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(18, 24, 18, 30),
+          sliver: SliverList.separated(
+            itemCount: content.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 20),
+            itemBuilder: (context, index) {
+              final item = content[index];
+              return NetubeContentCard(
+                content: item,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => NetubeContentPlayerPage(content: item),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 

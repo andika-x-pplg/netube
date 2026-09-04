@@ -6,6 +6,8 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../services/history_service.dart';
 import '../services/subscription_service.dart';
 import '../services/watch_later_service.dart';
+import '../services/video_reaction_service.dart';
+import '../widgets/video_comments_section.dart';
 
 class YoutubePlayerPage extends StatefulWidget {
   final String videoId;
@@ -33,6 +35,12 @@ class _YoutubePlayerPageState extends State<YoutubePlayerPage> {
   bool isSubscribed = false;
   bool isWatchLater = false;
 
+  // Menyimpan status like atau dislike video
+  String? videoReaction;
+
+  // Mencegah tombol ditekan berkali-kali saat Firebase masih bekerja
+  bool isUpdatingReaction = false;
+
   Timer? _timer;
 
   @override
@@ -42,6 +50,7 @@ class _YoutubePlayerPageState extends State<YoutubePlayerPage> {
     initializePlayer();
     checkSubscription();
     checkWatchLater();
+    checkVideoReaction();
   }
 
   Future<void> initializePlayer() async {
@@ -59,8 +68,7 @@ class _YoutubePlayerPageState extends State<YoutubePlayerPage> {
     // ==========================
     // AMBIL PROGRESS TERAKHIR
     // ==========================
-    final lastPosition =
-        await HistoryService.getVideoProgress(widget.videoId);
+    final lastPosition = await HistoryService.getVideoProgress(widget.videoId);
 
     _controller = YoutubePlayerController(
       initialVideoId: widget.videoId,
@@ -74,30 +82,27 @@ class _YoutubePlayerPageState extends State<YoutubePlayerPage> {
     // ==========================
     // AUTO SAVE PROGRESS
     // ==========================
-    _timer = Timer.periodic(
-      const Duration(seconds: 2),
-      (_) async {
-        if (_controller == null) return;
+    _timer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      if (_controller == null) return;
 
-        final value = _controller!.value;
+      final value = _controller!.value;
 
-        if (!value.isReady) return;
+      if (!value.isReady) return;
 
+      await HistoryService.saveVideoProgress(
+        videoId: widget.videoId,
+        seconds: value.position.inSeconds,
+      );
+
+      // reset progress kalau video selesai
+      if (value.position >= value.metaData.duration &&
+          value.metaData.duration.inSeconds > 0) {
         await HistoryService.saveVideoProgress(
           videoId: widget.videoId,
-          seconds: value.position.inSeconds,
+          seconds: 0,
         );
-
-        // reset progress kalau video selesai
-        if (value.position >= value.metaData.duration &&
-            value.metaData.duration.inSeconds > 0) {
-          await HistoryService.saveVideoProgress(
-            videoId: widget.videoId,
-            seconds: 0,
-          );
-        }
-      },
-    );
+      }
+    });
 
     if (!mounted) return;
 
@@ -105,8 +110,7 @@ class _YoutubePlayerPageState extends State<YoutubePlayerPage> {
   }
 
   Future<void> checkSubscription() async {
-    final result =
-        await SubscriptionService.isSubscribed(widget.channelId);
+    final result = await SubscriptionService.isSubscribed(widget.channelId);
 
     if (!mounted) return;
 
@@ -116,14 +120,67 @@ class _YoutubePlayerPageState extends State<YoutubePlayerPage> {
   }
 
   Future<void> checkWatchLater() async {
-    final result =
-        await WatchLaterService.isVideoSaved(widget.videoId);
+    final result = await WatchLaterService.isVideoSaved(widget.videoId);
 
     if (!mounted) return;
 
     setState(() {
       isWatchLater = result;
     });
+  }
+
+  Future<void> checkVideoReaction() async {
+    try {
+      final result = await VideoReactionService.getReaction(widget.videoId);
+
+      if (!mounted) return;
+
+      setState(() {
+        videoReaction = result;
+      });
+    } catch (error) {
+      debugPrint('Gagal mengambil reaksi video: $error');
+    }
+  }
+
+  Future<void> toggleVideoReaction(String reaction) async {
+    // Jangan jalankan lagi jika proses sebelumnya belum selesai
+    if (isUpdatingReaction) {
+      return;
+    }
+
+    setState(() {
+      isUpdatingReaction = true;
+    });
+
+    try {
+      final result = await VideoReactionService.toggleReaction(
+        videoId: widget.videoId,
+        title: widget.title,
+        thumbnail: widget.thumbnailUrl,
+        channelId: widget.channelId,
+        channelTitle: widget.channelTitle,
+        reaction: reaction,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        videoReaction = result;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan reaksi video')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isUpdatingReaction = false;
+        });
+      }
+    }
   }
 
   @override
@@ -147,21 +204,14 @@ class _YoutubePlayerPageState extends State<YoutubePlayerPage> {
     if (_controller == null) {
       return const Scaffold(
         backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Colors.red,
-          ),
-        ),
+        body: Center(child: CircularProgressIndicator(color: Colors.red)),
       );
     }
 
     return Scaffold(
       backgroundColor: Colors.black,
 
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(backgroundColor: Colors.black, title: Text(widget.title)),
 
       body: SingleChildScrollView(
         child: Column(
@@ -196,6 +246,73 @@ class _YoutubePlayerPageState extends State<YoutubePlayerPage> {
 
                   const SizedBox(height: 15),
 
+                  // ==========================
+                  // LIKE DAN DISLIKE
+                  // ==========================
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: isUpdatingReaction
+                              ? null
+                              : () {
+                                  toggleVideoReaction('like');
+                                },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: videoReaction == 'like'
+                                ? Colors.red
+                                : Colors.transparent,
+                            side: BorderSide(
+                              color: videoReaction == 'like'
+                                  ? Colors.red
+                                  : Colors.grey.shade700,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          icon: Icon(
+                            videoReaction == 'like'
+                                ? Icons.thumb_up
+                                : Icons.thumb_up_outlined,
+                          ),
+                          label: const Text('Suka'),
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: isUpdatingReaction
+                              ? null
+                              : () {
+                                  toggleVideoReaction('dislike');
+                                },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: videoReaction == 'dislike'
+                                ? Colors.red
+                                : Colors.transparent,
+                            side: BorderSide(
+                              color: videoReaction == 'dislike'
+                                  ? Colors.red
+                                  : Colors.grey.shade700,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          icon: Icon(
+                            videoReaction == 'dislike'
+                                ? Icons.thumb_down
+                                : Icons.thumb_down_outlined,
+                          ),
+                          label: const Text('Tidak suka'),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 15),
+
                   Row(
                     children: [
                       Expanded(
@@ -212,9 +329,7 @@ class _YoutubePlayerPageState extends State<YoutubePlayerPage> {
                       IconButton(
                         onPressed: () async {
                           if (isWatchLater) {
-                            await WatchLaterService.removeVideo(
-                              widget.videoId,
-                            );
+                            await WatchLaterService.removeVideo(widget.videoId);
 
                             if (!mounted) return;
 
@@ -281,17 +396,14 @@ class _YoutubePlayerPageState extends State<YoutubePlayerPage> {
                           }
                         },
 
-                        child: Text(
-                          isSubscribed
-                              ? "Subscribed"
-                              : "Subscribe",
-                        ),
+                        child: Text(isSubscribed ? "Subscribed" : "Subscribe"),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
+            VideoCommentsSection(videoId: widget.videoId),
           ],
         ),
       ),
