@@ -1,12 +1,19 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
+import '../widgets/library_widgets.dart';
 import 'movie_detail_page.dart';
 import 'youtube_player_page.dart';
 
-class WatchLaterPage extends StatelessWidget {
+class WatchLaterPage extends StatefulWidget {
   const WatchLaterPage({super.key});
+  @override
+  State<WatchLaterPage> createState() => _WatchLaterPageState();
+}
+
+class _WatchLaterPageState extends State<WatchLaterPage> {
+  int _selectedIndex = 0;
 
   Future<void> _showRemoveDialog({
     required BuildContext context,
@@ -14,38 +21,35 @@ class WatchLaterPage extends StatelessWidget {
     required String id,
   }) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-
     final result = await showDialog<bool>(
       context: context,
-      builder: (_) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF111827),
-          title: const Text(
-            "Remove from Watch Later",
-            style: TextStyle(color: Colors.white),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF111827),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Remove from Watch Later?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'This item will be removed from your saved library.',
+          style: TextStyle(color: Colors.white60),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
           ),
-          content: const Text(
-            "Are you sure you want to remove this item?",
-            style: TextStyle(color: Colors.white70),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: libraryAccent),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Remove'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Remove"),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
-
     if (result == true) {
       await FirebaseFirestore.instance
-          .collection("watchlater")
+          .collection('watchlater')
           .doc(uid)
           .collection(type)
           .doc(id)
@@ -56,263 +60,357 @@ class WatchLaterPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-
     return Scaffold(
-      backgroundColor: const Color(0xFF050B18),
-
+      backgroundColor: libraryBackground,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: libraryBackground,
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text("Watch Later", style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Watch Later',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
       ),
-
-      body: SingleChildScrollView(
+      body: SafeArea(
+        top: false,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-
           children: [
-            // ===========================
-            // MOVIES
-            // ===========================
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text(
-                "🎬 Watch Later Movies",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection("watchlater")
-                  .doc(uid)
-                  .collection("movies")
-                  .orderBy("savedAt", descending: true)
-                  .snapshots(),
-
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.red),
-                  );
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      "Belum ada film.",
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                  );
-                }
-
-                final movies = snapshot.data!.docs;
-
-                return SizedBox(
-                  height: 300,
-
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-
-                    itemCount: movies.length,
-
-                    itemBuilder: (context, index) {
-                      final movie =
-                          movies[index].data() as Map<String, dynamic>;
-
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => MovieDetailPage(movie: movie),
-                            ),
-                          );
-                        },
-
-                        child: Container(
-                          width: 170,
-                          margin: const EdgeInsets.only(left: 20),
-
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(15),
-
-                                child: Image.network(
-                                  "https://image.tmdb.org/t/p/w500${movie["poster_path"]}",
-                                  height: 230,
-                                  width: 170,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      movie["title"] ?? "",
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-
-                                  IconButton(
-                                    onPressed: () {
-                                      _showRemoveDialog(
-                                        context: context,
-                                        type: "movies",
-                                        id: movie["id"].toString(),
-                                      );
-                                    },
-                                    icon: const Icon(
-                                      Icons.bookmark,
-                                      color: Colors.orange,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+              child: Column(
+                children: [
+                  const LibraryHeader(
+                    title: 'Watch Later',
+                    description: 'Everything you saved, ready when you are.',
+                    icon: Icons.bookmark_rounded,
                   ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 35),
-
-            // ===========================
-            // YOUTUBE
-            // ===========================
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                "▶ Watch Later YouTube",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                  const SizedBox(height: 24),
+                  NetubeSegmentedControl(
+                    selectedIndex: _selectedIndex,
+                    onChanged: (value) =>
+                        setState(() => _selectedIndex = value),
+                  ),
+                ],
               ),
             ),
-
-            const SizedBox(height: 15),
-
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection("watchlater")
-                  .doc(uid)
-                  .collection("videos")
-                  .orderBy("savedAt", descending: true)
-                  .snapshots(),
-
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.red),
-                  );
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      "Belum ada video.",
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                  );
-                }
-
-                final videos = snapshot.data!.docs;
-
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-
-                  itemCount: videos.length,
-
-                  itemBuilder: (context, index) {
-                    final video = videos[index].data() as Map<String, dynamic>;
-
-                    return InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => YoutubePlayerPage(
-                              videoId: video["videoId"],
-                              title: video["title"],
-                              thumbnailUrl: video["thumbnail"],
-                              channelId: video["channelId"],
-                              channelTitle: video["channelTitle"],
-                            ),
-                          ),
-                        );
-                      },
-
-                      child: ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-
-                          child: Image.network(
-                            video["thumbnail"],
-                            width: 120,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-
-                        title: Text(
-                          video["title"],
-                          style: const TextStyle(color: Colors.white),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                        subtitle: Text(
-                          video["channelTitle"],
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-
-                        trailing: IconButton(
-                          icon: const Icon(
-                            Icons.bookmark,
-                            color: Colors.orange,
-                          ),
-                          onPressed: () {
-                            _showRemoveDialog(
-                              context: context,
-                              type: "videos",
-                              id: video["videoId"],
-                            );
-                          },
-                        ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 240),
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween(
+                      begin: const Offset(.025, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: _selectedIndex == 0
+                    ? _MoviesTab(
+                        key: const ValueKey('movies'),
+                        uid: uid,
+                        onRemove: _showRemoveDialog,
+                      )
+                    : _VideosTab(
+                        key: const ValueKey('videos'),
+                        uid: uid,
+                        onRemove: _showRemoveDialog,
                       ),
-                    );
-                  },
-                );
-              },
+              ),
             ),
-
-            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
+}
+
+typedef RemoveItem =
+    Future<void> Function({
+      required BuildContext context,
+      required String type,
+      required String id,
+    });
+
+class _MoviesTab extends StatelessWidget {
+  const _MoviesTab({super.key, required this.uid, required this.onRemove});
+  final String uid;
+  final RemoveItem onRemove;
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('watchlater')
+        .doc(uid)
+        .collection('movies')
+        .orderBy('savedAt', descending: true)
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const LibraryLoadingState();
+      }
+      final movies = snapshot.data?.docs ?? [];
+      if (movies.isEmpty) {
+        return const SingleChildScrollView(
+          child: LibraryEmptyState(
+            icon: Icons.bookmark_border_rounded,
+            title: 'Your Watch Later is empty',
+            description: 'Movies you save will appear here.',
+          ),
+        );
+      }
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth >= 720
+              ? 4
+              : constraints.maxWidth >= 480
+              ? 3
+              : 2;
+          return CustomScrollView(
+            key: const PageStorageKey('watch-later-movies'),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                sliver: SliverToBoxAdapter(
+                  child: LibrarySectionHeader(
+                    title: 'Saved Movies',
+                    count: movies.length,
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                sliver: SliverGrid.builder(
+                  itemCount: movies.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    mainAxisSpacing: 18,
+                    crossAxisSpacing: 14,
+                    childAspectRatio: .58,
+                  ),
+                  itemBuilder: (context, index) {
+                    final movie = movies[index].data() as Map<String, dynamic>;
+                    return _SavedMovieCard(
+                      movie: movie,
+                      onRemove: () => onRemove(
+                        context: context,
+                        type: 'movies',
+                        id: movie['id'].toString(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+class _SavedMovieCard extends StatelessWidget {
+  const _SavedMovieCard({required this.movie, required this.onRemove});
+  final Map<String, dynamic> movie;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final posterPath = movie['poster_path']?.toString() ?? '';
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => MovieDetailPage(movie: movie)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: NetworkArtwork(
+                      url: posterPath.isEmpty
+                          ? ''
+                          : 'https://image.tmdb.org/t/p/w500$posterPath',
+                      fallbackIcon: Icons.movie_outlined,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Material(
+                    color: const Color(0xCC050B18),
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      onPressed: onRemove,
+                      tooltip: 'Remove from Watch Later',
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(
+                        Icons.bookmark_rounded,
+                        color: libraryAccent,
+                        size: 21,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            movie['title']?.toString() ?? '',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              height: 1.25,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VideosTab extends StatelessWidget {
+  const _VideosTab({super.key, required this.uid, required this.onRemove});
+  final String uid;
+  final RemoveItem onRemove;
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('watchlater')
+        .doc(uid)
+        .collection('videos')
+        .orderBy('savedAt', descending: true)
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const LibraryLoadingState();
+      }
+      final videos = snapshot.data?.docs ?? [];
+      if (videos.isEmpty) {
+        return const SingleChildScrollView(
+          child: LibraryEmptyState(
+            icon: Icons.play_circle_outline_rounded,
+            title: 'Nothing saved yet',
+            description: 'Save videos to watch them later.',
+          ),
+        );
+      }
+      return ListView.separated(
+        key: const PageStorageKey('watch-later-videos'),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        itemCount: videos.length + 1,
+        separatorBuilder: (_, index) => SizedBox(height: index == 0 ? 16 : 12),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return LibrarySectionHeader(
+              title: 'Saved Videos',
+              count: videos.length,
+            );
+          }
+          final video = videos[index - 1].data() as Map<String, dynamic>;
+          return _SavedVideoTile(
+            video: video,
+            onRemove: () => onRemove(
+              context: context,
+              type: 'videos',
+              id: video['videoId'].toString(),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+class _SavedVideoTile extends StatelessWidget {
+  const _SavedVideoTile({required this.video, required this.onRemove});
+  final Map<String, dynamic> video;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: librarySurface,
+    borderRadius: BorderRadius.circular(16),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => YoutubePlayerPage(
+            videoId: video['videoId'],
+            title: video['title'],
+            thumbnailUrl: video['thumbnail'],
+            channelId: video['channelId'],
+            channelTitle: video['channelTitle'],
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 132,
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: NetworkArtwork(
+                    url: video['thumbnail']?.toString() ?? '',
+                    fallbackIcon: Icons.play_circle_outline_rounded,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    video['title']?.toString() ?? '',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      height: 1.3,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    video['channelTitle']?.toString() ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: onRemove,
+              tooltip: 'Remove from Watch Later',
+              icon: const Icon(
+                Icons.bookmark_rounded,
+                color: libraryAccent,
+                size: 21,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
