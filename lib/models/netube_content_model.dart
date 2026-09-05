@@ -12,6 +12,8 @@ class NetubeContent {
     required this.thumbnailUrl,
     required this.videoUrl,
     required this.createdAt,
+    required this.durationSeconds,
+    required this.isShort,
   });
 
   final String id;
@@ -24,6 +26,8 @@ class NetubeContent {
   final String thumbnailUrl;
   final String videoUrl;
   final DateTime? createdAt;
+  final int durationSeconds;
+  final bool isShort;
 
   factory NetubeContent.fromDocument(
     DocumentSnapshot<Map<String, dynamic>> document,
@@ -41,6 +45,8 @@ class NetubeContent {
       thumbnailUrl: data['thumbnailUrl']?.toString() ?? '',
       videoUrl: data['videoUrl']?.toString() ?? '',
       createdAt: timestamp is Timestamp ? timestamp.toDate() : null,
+      durationSeconds: (data['durationSeconds'] as num?)?.toInt() ?? 0,
+      isShort: data['isShort'] == true,
     );
   }
 }

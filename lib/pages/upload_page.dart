@@ -1,8 +1,10 @@
 import 'dart:typed_data';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../services/local_video_duration.dart';
 import '../services/netube_content_service.dart';
 import '../widgets/bottom_navbar.dart';
 import '../widgets/library_widgets.dart';
@@ -31,6 +33,7 @@ class _UploadPageState extends State<UploadPage> {
   final _picker = ImagePicker();
   XFile? _thumbnail;
   XFile? _video;
+  Duration? _videoDuration;
   Uint8List? _thumbnailPreview;
   String _selectedCategory = _categories.first;
   String _visibility = 'public';
@@ -61,7 +64,24 @@ class _UploadPageState extends State<UploadPage> {
   Future<void> _pickVideo() async {
     final file = await _picker.pickVideo(source: ImageSource.gallery);
     if (file == null || !mounted) return;
-    setState(() => _video = file);
+    try {
+      final duration = await readLocalVideoDuration(file);
+      if (!mounted) return;
+      setState(() {
+        _video = file;
+        _videoDuration = duration;
+        if (duration <= const Duration(minutes: 3)) {
+          _selectedCategory = 'Shorts';
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Video tidak dapat dibaca. Pilih file video lain.'),
+        ),
+      );
+    }
   }
 
   String _extension(XFile file, String fallback) {
@@ -71,7 +91,7 @@ class _UploadPageState extends State<UploadPage> {
 
   Future<void> _upload() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_thumbnail == null || _video == null) {
+    if (_thumbnail == null || _video == null || _videoDuration == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Choose a thumbnail and video first.')),
       );
@@ -83,14 +103,15 @@ class _UploadPageState extends State<UploadPage> {
     });
     try {
       await NetubeContentService.upload(
-        thumbnailBytes: await _thumbnail!.readAsBytes(),
+        thumbnailFile: _thumbnail!,
         thumbnailExtension: _extension(_thumbnail!, 'jpg'),
-        videoBytes: await _video!.readAsBytes(),
+        videoFile: _video!,
         videoExtension: _extension(_video!, 'mp4'),
         title: _titleController.text,
         description: _descriptionController.text,
         category: _selectedCategory,
         visibility: _visibility,
+        duration: _videoDuration!,
         onProgress: (value) {
           if (mounted) setState(() => _progress = value);
         },
@@ -102,20 +123,42 @@ class _UploadPageState extends State<UploadPage> {
       setState(() {
         _thumbnail = null;
         _video = null;
+        _videoDuration = null;
         _thumbnailPreview = null;
         _progress = 0;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Content uploaded to Netube.')),
       );
-    } catch (_) {
+    } on FirebaseException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Upload failed. Please try again.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_firebaseUploadMessage(error))));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Upload gagal: $error')));
       }
     } finally {
       if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  String _firebaseUploadMessage(FirebaseException error) {
+    switch (error.code) {
+      case 'unauthorized':
+        return 'Upload ditolak. Periksa izin Firebase Storage akun ini.';
+      case 'canceled':
+        return 'Upload dibatalkan.';
+      case 'quota-exceeded':
+        return 'Kuota Firebase Storage sudah habis.';
+      case 'retry-limit-exceeded':
+        return 'Koneksi upload terputus. Periksa internet lalu coba lagi.';
+      default:
+        return 'Upload gagal (${error.code}): ${error.message ?? 'coba lagi'}';
     }
   }
 
